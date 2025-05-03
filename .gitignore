@@ -1,0 +1,43 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+venv/
+.env
+.venv
+env/
+ENV/
+
+# PlatformIO
+.pio
+.pioenvs
+.piolibdeps
+.clang_complete
+.gcc-flags.json
+
+# Raspberry Pi
+*.log
+*.db
+*.sqlite3
+
+# IDEs et éditeurs
+.vscode/
+.idea/
+*.swp
+*.swo
+.DS_Store
+
+# Fichiers de build et temporaires
+build/
+dist/
+tmp/
+temp/
+
+# Fichiers de configuration locaux
+config.local.yml
+*.local.conf
+
+# Autres
+*.bak
+*.tmp
+*~
