@@ -1,0 +1,12 @@
+# Dépendances de base
+pyserial>=3.5        # Communication série avec Arduino
+RPi.GPIO>=0.7.0     # Contrôle GPIO Raspberry Pi
+python-dotenv>=0.19.0  # Gestion des variables d'environnement
+
+# Outils de développement
+pytest>=7.0.0        # Tests unitaires
+pylint>=2.12.0      # Linting
+black>=22.0.0       # Formatage de code
+
+# Monitoring et logging
+supervisor>=4.2.0    # Gestion des processus en mode headless
