@@ -1,12 +1,21 @@
-# Dépendances de base
+# Communication
 pyserial>=3.5        # Communication série avec Arduino
-RPi.GPIO>=0.7.0     # Contrôle GPIO Raspberry Pi
-python-dotenv>=0.19.0  # Gestion des variables d'environnement
+python-osc>=1.8.1    # Communication OSC
 
-# Outils de développement
-pytest>=7.0.0        # Tests unitaires
-pylint>=2.12.0      # Linting
-black>=22.0.0       # Formatage de code
+# Traitement d'image et vidéo
+opencv-python>=4.8.0  # OpenCV pour la capture vidéo
+numpy>=1.24.0        # Calculs numériques pour OpenCV
+
+# Hardware Raspberry Pi
+RPi.GPIO>=0.7.0      # Contrôle GPIO Raspberry Pi
+
+# Environnement
+python-dotenv>=0.19.0  # Gestion des variables d'environnement
 
 # Monitoring et logging
 supervisor>=4.2.0    # Gestion des processus en mode headless
+
+# Outils de développement
+pytest>=7.0.0       # Tests unitaires
+pylint>=2.12.0      # Linting
+black>=22.0.0       # Formatage de code
