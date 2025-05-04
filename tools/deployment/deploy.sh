@@ -26,7 +26,7 @@ rsync -avz --exclude '.git/' \
            --exclude 'venv' \
            --exclude '.env' \
            --exclude 'logs' \
-           "${LOCAL_PATH}/src/raspberry/" \
+           "${LOCAL_PATH}/src/raspberry_sender/" \
            "${REMOTE_USER}@${REMOTE_HOST}:${REMOTE_PATH}/"
 
 if [ $? -eq 0 ]; then

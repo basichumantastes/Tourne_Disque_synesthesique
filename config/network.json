@@ -1,0 +1,10 @@
+{
+    "raspberry_sender": {
+        "ip": "192.168.0.104",
+        "description": "Raspberry Pi qui gère la détection de couleur et l'envoi OSC"
+    },
+    "raspberry_receiver": {
+        "ip": "",
+        "description": "Raspberry Pi qui exécute Pure Data et reçoit les données OSC"
+    }
+}
