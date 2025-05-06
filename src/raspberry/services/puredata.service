@@ -1,0 +1,15 @@
+[Unit]
+Description=Pure Data Service
+After=network.target vision.service logic.service
+
+[Service]
+Environment=DISPLAY=:0
+Type=simple
+User=blanchard
+ExecStart=/usr/bin/puredata -nogui /home/blanchard/tourne_disque/puredata/main.pd
+WorkingDirectory=/home/blanchard/tourne_disque
+Restart=always
+RestartSec=3
+
+[Install]
+WantedBy=multi-user.target

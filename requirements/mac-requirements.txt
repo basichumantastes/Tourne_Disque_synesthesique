@@ -1,0 +1,3 @@
+python-osc>=1.8.1    # Communication OSC
+opencv-python>=4.8.0  # OpenCV pour la capture vidéo
+numpy>=1.24.0        # Calculs numériques pour OpenCV

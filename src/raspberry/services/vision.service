@@ -1,0 +1,14 @@
+[Unit]
+Description=Vision Service
+After=network.target
+
+[Service]
+Type=simple
+User=blanchard
+ExecStart=/usr/bin/python3 /home/blanchard/tourne_disque/scripts/vision.py
+WorkingDirectory=/home/blanchard/tourne_disque
+Restart=always
+RestartSec=3
+
+[Install]
+WantedBy=multi-user.target

@@ -1,0 +1,7 @@
+#N canvas 100 100 800 600 10;
+#X obj 100 50 netreceive -u -b 9000;
+#X obj 100 100 oscparse;
+#X obj 100 150 list trim;
+#X obj 100 500 dac~;
+#X connect 0 0 1 0;
+#X connect 1 0 2 0;
