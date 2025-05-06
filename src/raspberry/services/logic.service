@@ -5,7 +5,8 @@ After=network.target vision.service
 [Service]
 Type=simple
 User=blanchard
-ExecStart=/usr/bin/python3 /home/blanchard/tourne_disque/scripts/logic.py
+Environment=PYTHONPATH=/home/blanchard/tourne_disque
+ExecStart=/home/blanchard/tourne_disque/venv/bin/python /home/blanchard/tourne_disque/scripts/logic.py
 WorkingDirectory=/home/blanchard/tourne_disque
 Restart=always
 RestartSec=3

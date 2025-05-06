@@ -27,6 +27,6 @@ mkdir -p /home/blanchard/tourne_disque/logs
 cd /home/blanchard/tourne_disque
 python3 -m venv venv
 source venv/bin/activate
-pip install -r requirements/dev-requirements.txt
+pip install -r requirements.txt
 
 echo "Installation terminée ! Redémarrez le Raspberry Pi pour activer tous les services."

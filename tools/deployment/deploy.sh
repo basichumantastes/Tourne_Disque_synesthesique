@@ -36,8 +36,12 @@ else
     exit 1
 fi
 
+# Installation des dépendances Python dans le venv
+log "Installation des dépendances Python..."
+ssh ${REMOTE_USER}@${REMOTE_HOST} "cd ${REMOTE_PATH} && python3 -m venv venv && source venv/bin/activate && pip install -r requirements.txt"
+
 # Redémarrage des services systemd
 log "Redémarrage des services..."
-ssh ${REMOTE_USER}@${REMOTE_HOST} "sudo systemctl restart vision.service logic.service puredata.service"
+ssh ${REMOTE_USER}@${REMOTE_HOST} "sudo systemctl daemon-reload && sudo systemctl restart vision.service logic.service puredata.service"
 
 log "Déploiement terminé avec succès"
