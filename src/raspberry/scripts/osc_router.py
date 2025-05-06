@@ -26,6 +26,9 @@ class OSCRouter:
                 cfg['port']
             )
 
+        # Stockage des modules enregistrés avec leurs ports
+        self.registered_modules = {}
+
         # Configuration du serveur OSC local
         self.dispatcher = dispatcher.Dispatcher()
         self.setup_routes()
@@ -45,6 +48,12 @@ class OSCRouter:
         # Routes pour les données de logic
         self.dispatcher.map("/motion/speed", self.handle_speed)
         self.dispatcher.map("/motion/direction", self.handle_direction)
+        
+        # Route pour les événements génériques
+        self.dispatcher.map("/event", self.handle_event)
+        
+        # Route pour l'enregistrement des modules
+        self.dispatcher.map("/register/music_engine", self.register_music_engine)
 
     def route_message(self, address, *args):
         """Route un message vers toutes les destinations configurées"""
@@ -63,6 +72,22 @@ class OSCRouter:
 
     def handle_direction(self, address, *args):
         self.route_message("/motion/direction", args)
+        
+    def handle_event(self, address, *args):
+        """Gère les événements génériques"""
+        self.route_message("/event", args)
+        # Si le moteur musical est enregistré, lui envoyer directement le message
+        if "music_engine" in self.registered_modules:
+            port = self.registered_modules["music_engine"]
+            client = udp_client.SimpleUDPClient("127.0.0.1", port)
+            client.send_message("/event", args)
+
+    def register_music_engine(self, address, *args):
+        """Enregistre le port du moteur musical"""
+        if args and len(args) > 0:
+            port = int(args[0])
+            self.registered_modules["music_engine"] = port
+            print(f"Module music_engine enregistré sur le port {port}")
 
     def run(self):
         """Démarre le serveur OSC"""

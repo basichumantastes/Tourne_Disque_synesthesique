@@ -21,6 +21,7 @@ sudo systemctl enable vision.service
 sudo systemctl enable logic.service
 sudo systemctl enable puredata.service
 sudo systemctl enable led_controller.service
+sudo systemctl enable music_engine.service
 
 # Création du dossier pour le projet
 mkdir -p /home/blanchard/tourne_disque/logs

@@ -1,0 +1,14 @@
+[Unit]
+Description=Service du moteur musical pour le projet Tourne Disque Synesthésique
+After=network.target
+
+[Service]
+Type=simple
+User=blanchard
+Environment=PYTHONPATH=/home/blanchard/tourne_disque
+WorkingDirectory=/home/blanchard/tourne_disque
+ExecStart=/home/blanchard/tourne_disque/venv/bin/python /home/blanchard/tourne_disque/scripts/music_engine.py
+Restart=on-failure
+
+[Install]
+WantedBy=multi-user.target

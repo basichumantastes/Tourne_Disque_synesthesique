@@ -6,6 +6,10 @@ Contrôleur pour le bandeau LED
 - Applique les couleurs au bandeau LED
 """
 
+# Configuration des pins GPIO
+CLK_PIN = 16  # Pin d'horloge pour le bandeau LED
+DAT_PIN = 20  # Pin de données pour le bandeau LED
+
 from pythonosc import dispatcher, osc_server
 import threading
 import sys
@@ -19,8 +23,8 @@ from lib.ledstrip import LEDStrip
 import json
 
 class LEDController:
-    def __init__(self, clk_pin=16, dat_pin=20):
-        self.led_strip = LEDStrip(clk_pin, dat_pin)
+    def __init__(self):
+        self.led_strip = LEDStrip(CLK_PIN, DAT_PIN)
         
         # Chargement de la configuration depuis le nouveau chemin
         network_config_path = os.path.join(parent_dir, 'network.json')

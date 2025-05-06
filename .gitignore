@@ -37,6 +37,9 @@ temp/
 config.local.yml
 *.local.conf
 
+# Fichiers de déploiement sensibles
+.ssh_password
+
 # Autres
 *.bak
 *.tmp
