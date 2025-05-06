@@ -1,8 +1,5 @@
 #!/bin/bash
 
-# Configuration de l'environnement Python sur le Raspberry Pi
-# À exécuter une seule fois lors de la première installation
-
 # Mise à jour du système
 sudo apt update
 sudo apt upgrade -y
@@ -11,24 +8,25 @@ sudo apt upgrade -y
 sudo apt install -y \
     python3-venv \
     python3-pip \
+    python3-opencv \
     libcamera-dev \
-    supervisor \
+    puredata \
     git
 
-# Configuration de l'environnement Python
-cd /home/blanchard/color_detection_project
-python3 -m venv venv
-source venv/bin/activate
+# Configuration des services systemd
+sudo cp /home/blanchard/tourne_disque/services/*.service /etc/systemd/system/
+sudo systemctl daemon-reload
+sudo systemctl enable vision.service
+sudo systemctl enable logic.service
+sudo systemctl enable puredata.service
+
+# Création du dossier pour le projet
+mkdir -p /home/blanchard/tourne_disque/logs
 
 # Installation des dépendances Python
+cd /home/blanchard/tourne_disque
+python3 -m venv venv
+source venv/bin/activate
 pip install -r requirements/dev-requirements.txt
 
-# Configuration de Supervisor
-sudo cp src/raspberry/supervisor.conf /etc/supervisor/conf.d/tourne_disque.conf
-sudo supervisorctl reread
-sudo supervisorctl update
-
-# Création du dossier de logs
-mkdir -p logs
-
-echo "Installation terminée !"
+echo "Installation terminée ! Redémarrez le Raspberry Pi pour activer tous les services."

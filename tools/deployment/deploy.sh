@@ -2,8 +2,8 @@
 
 # Configuration
 REMOTE_USER="blanchard"
-REMOTE_HOST="192.168.0.104"
-REMOTE_PATH="/home/blanchard/color_detection_project"
+REMOTE_HOST="192.168.0.124"
+REMOTE_PATH="/home/blanchard/tourne_disque"
 LOCAL_PATH="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 
 # Fonction pour afficher les messages
@@ -26,7 +26,7 @@ rsync -avz --exclude '.git/' \
            --exclude 'venv' \
            --exclude '.env' \
            --exclude 'logs' \
-           "${LOCAL_PATH}/src/raspberry_sender/" \
+           "${LOCAL_PATH}/src/raspberry/" \
            "${REMOTE_USER}@${REMOTE_HOST}:${REMOTE_PATH}/"
 
 if [ $? -eq 0 ]; then
@@ -36,8 +36,8 @@ else
     exit 1
 fi
 
-# Redémarrage du service supervisor si nécessaire
-log "Redémarrage du service..."
-ssh ${REMOTE_USER}@${REMOTE_HOST} "sudo systemctl restart supervisor"
+# Redémarrage des services systemd
+log "Redémarrage des services..."
+ssh ${REMOTE_USER}@${REMOTE_HOST} "sudo systemctl restart vision.service logic.service puredata.service"
 
 log "Déploiement terminé avec succès"
