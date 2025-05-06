@@ -1,8 +1,0 @@
-{
-    "osc_ip": "192.168.0.118",
-    "osc_port": 12000,
-    "rotation_speed": 200,
-    "h_ratio": 1.0,
-    "s_ratio": 1.0,
-    "v_ratio": 1.0
-}
