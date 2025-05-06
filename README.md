@@ -12,7 +12,7 @@ Installation artistique transformant des toiles circulaires en partitions visuel
 ## Architecture
 
 ### Hardware
-- Raspberry Pi 4 (unité centrale)
+- Raspberry Pi 5 (unité centrale)
 - Camera Module (capture)
 - Bandeau LED (retour lumineux)
 - Système de rotation de la toile
