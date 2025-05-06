@@ -1,0 +1,16 @@
+[Unit]
+Description=OSC Router Service
+After=network.target
+Before=vision.service logic.service led_controller.service
+
+[Service]
+Type=simple
+User=blanchard
+Environment=PYTHONPATH=/home/blanchard/tourne_disque
+ExecStart=/home/blanchard/tourne_disque/venv/bin/python /home/blanchard/tourne_disque/scripts/osc_router.py
+WorkingDirectory=/home/blanchard/tourne_disque
+Restart=always
+RestartSec=3
+
+[Install]
+WantedBy=multi-user.target

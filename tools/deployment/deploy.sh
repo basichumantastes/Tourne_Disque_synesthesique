@@ -40,8 +40,23 @@ fi
 log "Installation des dépendances Python..."
 ssh ${REMOTE_USER}@${REMOTE_HOST} "cd ${REMOTE_PATH} && python3 -m venv venv && source venv/bin/activate && pip install -r requirements.txt"
 
-# Redémarrage des services systemd
-log "Redémarrage des services..."
-ssh ${REMOTE_USER}@${REMOTE_HOST} "sudo systemctl daemon-reload && sudo systemctl restart vision.service logic.service puredata.service"
+# Installation et redémarrage des services systemd
+log "Installation et redémarrage des services..."
+ssh ${REMOTE_USER}@${REMOTE_HOST} "
+    # Copier tous les fichiers de service vers systemd
+    sudo cp ${REMOTE_PATH}/services/*.service /etc/systemd/system/
+    
+    # Recharger systemd
+    sudo systemctl daemon-reload
+    
+    # Activer tous les services (pour qu'ils démarrent au boot)
+    for service in ${REMOTE_PATH}/services/*.service; do
+        service_name=\$(basename \$service)
+        sudo systemctl enable \$service_name
+    done
+    
+    # Redémarrer tous les services
+    sudo systemctl restart osc_router.service vision.service logic.service puredata.service led_controller.service
+"
 
 log "Déploiement terminé avec succès"

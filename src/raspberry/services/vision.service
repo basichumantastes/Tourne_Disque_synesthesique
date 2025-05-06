@@ -1,6 +1,6 @@
 [Unit]
 Description=Vision Service
-After=network.target
+After=network.target osc_router.service
 
 [Service]
 Type=simple

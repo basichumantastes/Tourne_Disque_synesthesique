@@ -8,19 +8,33 @@ Contrôleur pour le bandeau LED
 
 from pythonosc import dispatcher, osc_server
 import threading
+import sys
+import os
+from pathlib import Path
+
+# Ajout du dossier parent au path pour permettre l'importation de lib.ledstrip
+parent_dir = Path(__file__).resolve().parent.parent
+sys.path.append(str(parent_dir))
 from lib.ledstrip import LEDStrip
+import json
 
 class LEDController:
     def __init__(self, clk_pin=16, dat_pin=20):
         self.led_strip = LEDStrip(clk_pin, dat_pin)
+        
+        # Chargement de la configuration depuis le nouveau chemin
+        network_config_path = os.path.join(parent_dir, 'network.json')
+        with open(network_config_path, 'r') as f:
+            self.config = json.load(f)
         
         # Configuration OSC
         self.dispatcher = dispatcher.Dispatcher()
         self.dispatcher.map("/color/rgb", self.handle_rgb_color)
         
         # Serveur OSC
+        osc_config = self.config['osc']['led']
         self.server = osc_server.ThreadingOSCUDPServer(
-            ("127.0.0.1", 9002),  # Port local pour LED
+            (osc_config['ip'], osc_config['port']),
             self.dispatcher
         )
         

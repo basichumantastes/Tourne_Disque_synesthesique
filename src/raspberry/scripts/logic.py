@@ -4,16 +4,46 @@ from pythonosc import udp_client, dispatcher, osc_server
 import collections
 import threading
 import time
+import json
+import os
+from pathlib import Path
+
+# Chemin parent pour accéder à network.json
+parent_dir = Path(__file__).resolve().parent.parent
 
 # Configuration
 COLOR_BUFFER_SIZE = 5
 EMA_ALPHA = 0.0005
 
+class OSCManager:
+    def __init__(self):
+        network_config_path = os.path.join(parent_dir, 'network.json')
+        with open(network_config_path, 'r') as f:
+            self.config = json.load(f)
+        
+        # Création des clients OSC
+        osc_config = self.config['osc']
+        self.puredata_client = udp_client.SimpleUDPClient(
+            osc_config['puredata']['ip'],
+            osc_config['puredata']['port']
+        )
+        self.led_client = udp_client.SimpleUDPClient(
+            osc_config['led']['ip'],
+            osc_config['led']['port']
+        )
+        
+    def send_to_puredata(self, address, value):
+        """Envoie un message OSC à Pure Data"""
+        self.puredata_client.send_message(address, value)
+        
+    def send_to_leds(self, address, values):
+        """Envoie un message OSC au contrôleur LED"""
+        self.led_client.send_message(address, values)
+
 class ColorProcessor:
     def __init__(self):
-        # Clients OSC pour Pure Data et LED
-        self.puredata_client = udp_client.SimpleUDPClient("127.0.0.1", 9000)
-        self.led_client = udp_client.SimpleUDPClient("127.0.0.1", 9002)
+        # Gestionnaire OSC
+        self.osc = OSCManager()
         
         # Buffers circulaires pour RGB
         self.rgb_buffers = {
@@ -36,12 +66,16 @@ class ColorProcessor:
 
     def setup_osc_server(self):
         """Configure le serveur OSC pour recevoir les données de vision.py"""
+        network_config_path = os.path.join(parent_dir, 'network.json')
+        with open(network_config_path, 'r') as f:
+            config = json.load(f)
+            
         self.dispatcher = dispatcher.Dispatcher()
         self.dispatcher.map("/color/raw/rgb", self.handle_rgb)
         self.dispatcher.map("/color/raw/hsv", self.handle_hsv)
         
         self.server = osc_server.ThreadingOSCUDPServer(
-            ("127.0.0.1", 9001),
+            (config['osc']['logic']['ip'], config['osc']['logic']['port']),
             self.dispatcher
         )
 
@@ -67,7 +101,7 @@ class ColorProcessor:
             rgb_smooth[color] = int(self.rgb_ema[color])
         
         # Envoi au contrôleur LED
-        self.led_client.send_message("/color/rgb", [
+        self.osc.send_to_leds("/color/rgb", [
             rgb_smooth['r'],
             rgb_smooth['g'],
             rgb_smooth['b']
@@ -75,7 +109,7 @@ class ColorProcessor:
         
         # Envoi à Pure Data
         for color, value in rgb_smooth.items():
-            self.puredata_client.send_message(f"/color/rgb/{color}", value)
+            self.osc.send_to_puredata(f"/color/rgb/{color}", value)
 
     def handle_hsv(self, address, h, s, v):
         """Traitement des données HSV reçues"""
@@ -86,7 +120,7 @@ class ColorProcessor:
             hsv_smooth[param] = int(self.hsv_ema[param])
             
             # Envoi à Pure Data
-            self.puredata_client.send_message(
+            self.osc.send_to_puredata(
                 f"/color/hsv/{param}",
                 hsv_smooth[param]
             )

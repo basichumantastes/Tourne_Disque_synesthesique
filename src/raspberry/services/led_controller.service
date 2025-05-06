@@ -1,12 +1,12 @@
 [Unit]
-Description=Logic Service
+Description=LED Controller Service
 After=network.target osc_router.service
 
 [Service]
 Type=simple
 User=blanchard
 Environment=PYTHONPATH=/home/blanchard/tourne_disque
-ExecStart=/home/blanchard/tourne_disque/venv/bin/python /home/blanchard/tourne_disque/scripts/logic.py
+ExecStart=/home/blanchard/tourne_disque/venv/bin/python /home/blanchard/tourne_disque/scripts/led_controller.py
 WorkingDirectory=/home/blanchard/tourne_disque
 Restart=always
 RestartSec=3

@@ -1,0 +1,20 @@
+{
+    "raspberry": {
+        "ip": "192.168.0.124",
+        "description": "Raspberry Pi unique qui gère la détection de couleur, le contrôle LED et la synthèse sonore"
+    },
+    "osc": {
+        "puredata": {
+            "ip": "127.0.0.1",
+            "port": 9000
+        },
+        "logic": {
+            "ip": "127.0.0.1",
+            "port": 9001
+        },
+        "led": {
+            "ip": "127.0.0.1",
+            "port": 9002
+        }
+    }
+}

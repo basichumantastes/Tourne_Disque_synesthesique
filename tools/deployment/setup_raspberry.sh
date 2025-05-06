@@ -16,9 +16,11 @@ sudo apt install -y \
 # Configuration des services systemd
 sudo cp /home/blanchard/tourne_disque/services/*.service /etc/systemd/system/
 sudo systemctl daemon-reload
+sudo systemctl enable osc_router.service
 sudo systemctl enable vision.service
 sudo systemctl enable logic.service
 sudo systemctl enable puredata.service
+sudo systemctl enable led_controller.service
 
 # Création du dossier pour le projet
 mkdir -p /home/blanchard/tourne_disque/logs

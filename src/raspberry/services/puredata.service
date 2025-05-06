@@ -1,6 +1,6 @@
 [Unit]
 Description=Pure Data Service
-After=network.target vision.service logic.service
+After=network.target osc_router.service vision.service logic.service
 
 [Service]
 Environment=DISPLAY=:0
