@@ -11,12 +11,27 @@ log() {
     echo "[$(date '+%Y-%m-%d %H:%M:%S')] $1"
 }
 
+# Démarrage de SSH agent si pas déjà actif
+if [ -z "$SSH_AUTH_SOCK" ]; then
+    log "Démarrage de l'agent SSH..."
+    eval $(ssh-agent -s)
+    ssh-add
+fi
+
 # Vérification de la connexion SSH
 log "Vérification de la connexion SSH..."
-if ! ssh -q ${REMOTE_USER}@${REMOTE_HOST} exit; then
-    log "Erreur: Impossible de se connecter au Raspberry Pi"
-    exit 1
+if ! ssh -o BatchMode=yes -o ConnectTimeout=5 ${REMOTE_USER}@${REMOTE_HOST} exit > /dev/null 2>&1; then
+    log "Connexion SSH en cours (vous devrez peut-être entrer votre mot de passe)..."
+    ssh -o ControlMaster=yes -o ControlPath=~/.ssh/controlmaster-%r@%h:%p -o ControlPersist=600 ${REMOTE_USER}@${REMOTE_HOST} exit
+    
+    if [ $? -ne 0 ]; then
+        log "Erreur: Impossible de se connecter au Raspberry Pi"
+        exit 1
+    fi
 fi
+
+# Utilisation de la même connexion SSH pour toutes les opérations
+SSH_OPTS="-o ControlMaster=no -o ControlPath=~/.ssh/controlmaster-${REMOTE_USER}@${REMOTE_HOST}:22"
 
 # Synchronisation des fichiers
 log "Déploiement des fichiers vers le Raspberry Pi..."
@@ -26,6 +41,7 @@ rsync -avz --exclude '.git/' \
            --exclude 'venv' \
            --exclude '.env' \
            --exclude 'logs' \
+           -e "ssh ${SSH_OPTS}" \
            "${LOCAL_PATH}/src/raspberry/" \
            "${REMOTE_USER}@${REMOTE_HOST}:${REMOTE_PATH}/"
 
@@ -38,11 +54,11 @@ fi
 
 # Installation des dépendances Python dans le venv
 log "Installation des dépendances Python..."
-ssh ${REMOTE_USER}@${REMOTE_HOST} "cd ${REMOTE_PATH} && python3 -m venv venv && source venv/bin/activate && pip install -r requirements.txt"
+ssh ${SSH_OPTS} ${REMOTE_USER}@${REMOTE_HOST} "cd ${REMOTE_PATH} && python3 -m venv venv && source venv/bin/activate && pip install -r requirements.txt"
 
 # Installation et redémarrage des services systemd
 log "Installation et redémarrage des services..."
-ssh ${REMOTE_USER}@${REMOTE_HOST} "
+ssh ${SSH_OPTS} ${REMOTE_USER}@${REMOTE_HOST} "
     # Copier tous les fichiers de service vers systemd
     sudo cp ${REMOTE_PATH}/services/*.service /etc/systemd/system/
     
