@@ -32,16 +32,3 @@ vision.py --> logic.py --> led_controller.py
                       --> Pure Data
 ```
 
-## Utilisation
-
-### Développement
-```bash
-# Test vision seule
-python vision.py
-
-# Test LED seul
-python led_controller.py
-
-# Test complet
-python vision.py & python logic.py & python led_controller.py
-```
