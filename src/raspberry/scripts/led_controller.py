@@ -34,12 +34,13 @@ class LEDController:
         # Configuration OSC
         self.dispatcher = dispatcher.Dispatcher()
         
-        # Écouter uniquement les valeurs RGB brutes provenant du module vision
-        self.dispatcher.map("/vision/color/raw/rgb", self.handle_rgb_color)
+        # Écouter les composantes RGB individuelles provenant du module vision
+        self.dispatcher.map("/vision/color/raw/rgb/r", self.handle_rgb_r)
+        self.dispatcher.map("/vision/color/raw/rgb/g", self.handle_rgb_g)
+        self.dispatcher.map("/vision/color/raw/rgb/b", self.handle_rgb_b)
         
-        # On n'écoute plus les valeurs EMA du module logic
-        # self.dispatcher.map("/logic/color/rgb", self.handle_rgb_color)
-        # self.dispatcher.map("/logic/color/ema/rgb", self.handle_rgb_color)
+        # Stockage des valeurs RGB actuelles
+        self.current_rgb = {'r': 0, 'g': 0, 'b': 0}
         
         # Serveur OSC
         osc_config = self.config['osc']['led']
@@ -48,13 +49,31 @@ class LEDController:
             self.dispatcher
         )
         
-    def handle_rgb_color(self, address, r, g, b):
-        """Gestion des couleurs RGB reçues via OSC"""
-        # Identifier la source du message pour le logging
-        source = address.split('/')[1] if len(address.split('/')) > 1 else "unknown"
+    def handle_rgb_r(self, address, r):
+        """Gestion de la composante R reçue via OSC"""
+        self.current_rgb['r'] = int(r)
+        self.update_led_color()
+        print(f"LED couleur R appliquée: R={r}")
         
-        self.led_strip.setcolourrgb(int(r), int(g), int(b))
-        print(f"LED couleur appliquée depuis {source}: R={r}, G={g}, B={b}")
+    def handle_rgb_g(self, address, g):
+        """Gestion de la composante G reçue via OSC"""
+        self.current_rgb['g'] = int(g)
+        self.update_led_color()
+        print(f"LED couleur G appliquée: G={g}")
+        
+    def handle_rgb_b(self, address, b):
+        """Gestion de la composante B reçue via OSC"""
+        self.current_rgb['b'] = int(b)
+        self.update_led_color()
+        print(f"LED couleur B appliquée: B={b}")
+        
+    def update_led_color(self):
+        """Met à jour la couleur du bandeau LED"""
+        self.led_strip.setcolourrgb(
+            self.current_rgb['r'],
+            self.current_rgb['g'],
+            self.current_rgb['b']
+        )
         
     def run(self):
         """Démarre le serveur OSC"""

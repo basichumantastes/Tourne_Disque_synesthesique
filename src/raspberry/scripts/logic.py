@@ -65,16 +65,12 @@ class ColorProcessor:
             
         self.dispatcher = dispatcher.Dispatcher()
         
-        # Compatibilité avec les anciens formats (liste complète RGB et HSV)
-        self.dispatcher.map("/vision/color/raw/rgb", self.handle_rgb)
-        self.dispatcher.map("/vision/color/raw/hsv", self.handle_hsv)
-        
-        # Nouveaux handlers pour les composantes individuelles RGB
+        # Uniquement les handlers pour les composantes individuelles RGB
         self.dispatcher.map("/vision/color/raw/rgb/r", self.handle_rgb_r)
         self.dispatcher.map("/vision/color/raw/rgb/g", self.handle_rgb_g)
         self.dispatcher.map("/vision/color/raw/rgb/b", self.handle_rgb_b)
         
-        # Nouveaux handlers pour les composantes individuelles HSV
+        # Uniquement les handlers pour les composantes individuelles HSV
         self.dispatcher.map("/vision/color/raw/hsv/h", self.handle_hsv_h)
         self.dispatcher.map("/vision/color/raw/hsv/s", self.handle_hsv_s)
         self.dispatcher.map("/vision/color/raw/hsv/v", self.handle_hsv_v)
@@ -87,7 +83,7 @@ class ColorProcessor:
     def update_ema(self, current, new_value):
         """Calcule la nouvelle valeur EMA"""
         if current is None:
-            return new_value
+            return 0  # Initialize EMA to zero instead of the first captured value
         return EMA_ALPHA * new_value + (1 - EMA_ALPHA) * current
 
     # Handlers pour les composantes individuelles de RGB
@@ -131,7 +127,7 @@ class ColorProcessor:
     def handle_hsv_v(self, address, value):
         """Traitement de la composante V reçue individuellement"""
         self.process_hsv_component('v', value)
-    
+        
     def process_hsv_component(self, component, value):
         """Traite une composante HSV individuelle"""
         # Mise à jour EMA pour cette composante
@@ -140,43 +136,6 @@ class ColorProcessor:
         
         # Envoi à Pure Data pour cette composante spécifique
         self.osc.send_to_puredata(f"/logic/color/ema/{component}", smoothed_value)
-
-    # Handlers existants pour la compatibilité avec les anciens formats
-    def handle_rgb(self, address, r, g, b):
-        """Traitement des données RGB reçues"""
-        # Mise à jour des buffers
-        for value, color in zip([r, g, b], ['r', 'g', 'b']):
-            self.rgb_buffers[color].append(value)
-        
-        # Calcul des moyennes et EMA
-        rgb_smooth = {}
-        for color in ['r', 'g', 'b']:
-            # Moyenne du buffer
-            avg = sum(self.rgb_buffers[color]) / len(self.rgb_buffers[color])
-            # Mise à jour EMA
-            self.rgb_ema[color] = self.update_ema(self.rgb_ema[color], avg)
-            rgb_smooth[color] = int(self.rgb_ema[color])
-        
-        # NOTE: On n'envoie plus les valeurs EMA au contrôleur LED
-        # Le contrôleur LED reçoit directement les valeurs brutes du module vision
-        
-        # Envoi à Pure Data avec nouveau format d'adressage
-        for color, value in rgb_smooth.items():
-            self.osc.send_to_puredata(f"/logic/color/ema/{color}", value)
-
-    def handle_hsv(self, address, h, s, v):
-        """Traitement des données HSV reçues"""
-        # Mise à jour des EMA HSV
-        hsv_smooth = {}
-        for value, param in zip([h, s, v], ['h', 's', 'v']):
-            self.hsv_ema[param] = self.update_ema(self.hsv_ema[param], value)
-            hsv_smooth[param] = int(self.hsv_ema[param])
-            
-            # Envoi à Pure Data avec nouveau format d'adressage
-            self.osc.send_to_puredata(
-                f"/logic/color/ema/{param}",
-                hsv_smooth[param]
-            )
 
     def run(self):
         """Démarre le serveur OSC"""

@@ -144,9 +144,7 @@ def main():
                 osc_client.send_message("/vision/color/raw/hsv/s", s)
                 osc_client.send_message("/vision/color/raw/hsv/v", v)
                 
-                # Conservation de l'envoi des valeurs groupées pour compatibilité
-                osc_client.send_message("/vision/color/raw/rgb", [r, g, b])
-                osc_client.send_message("/vision/color/raw/hsv", [h, s, v])
+                # Commentaire: les envois de listes ont été supprimés pour une meilleure compatibilité
                 
             time.sleep(0.15)  # 10 Hz
 

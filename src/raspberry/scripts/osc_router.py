@@ -30,7 +30,7 @@ class OSCRouter:
         # Table de routage hiérarchique des messages - simplifiée par module source
         self.routes = {
             # Routage par module source (notation avec / à la fin indique préfixe)
-            "/vision/": ["logic", "led", "dev"],     # Tous les messages vision vers logic, led et dev
+            "/vision/": ["logic", "led", "dev", "puredata"],     # Tous les messages vision vers logic, led et dev
             "/logic/": ["led", "puredata", "music_engine", "dev"],  # Messages logic vers LED, PD, music engine et dev
             "/music_engine/": ["logic", "puredata", "dev"],  # Messages music_engine vers logic, PD et dev
             "/arduino/": ["logic", "puredata", "dev"],  # Messages arduino vers logic, PD et dev
