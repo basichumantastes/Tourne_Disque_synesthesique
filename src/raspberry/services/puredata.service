@@ -6,7 +6,10 @@ After=network.target osc_router.service vision.service logic.service
 Environment=DISPLAY=:0
 Type=simple
 User=blanchard
-ExecStart=/usr/bin/puredata -nogui /home/blanchard/tourne_disque/puredata/main.pd
+ExecStart=/usr/bin/puredata -nogui \
+  -send "pd dsp 1" \
+  -audiodev 0 0 0 0 \
+  /home/blanchard/tourne_disque/puredata/main.pd
 WorkingDirectory=/home/blanchard/tourne_disque
 Restart=always
 RestartSec=3
