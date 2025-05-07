@@ -19,7 +19,8 @@ sudo apt install -y \
     python3-venv \
     python3-pip \
     git \
-    puredata
+    puredata \
+    libcap-dev
 
 # Camera dependencies installation for Raspberry Pi 5
 echo "=== Installing camera dependencies ==="
@@ -65,7 +66,6 @@ fi
 # Creating project folders and logs
 echo "=== Preparing folder structure ==="
 mkdir -p /home/blanchard/tourne_disque/logs
-mkdir -p /home/blanchard/tourne_disque/tools/deployment
 
 # Systemd services configuration
 echo "=== Configuring systemd services ==="
@@ -90,6 +90,12 @@ if [ -f "/home/blanchard/tourne_disque/requirements.txt" ]; then
     python3 -m venv venv
     source venv/bin/activate
     pip install -r requirements.txt
+    
+    # Create bridge to system packages for accessing libcamera and other system libraries
+    echo "=== Creating bridge to system packages for virtual environment ==="
+    echo '/usr/lib/python3/dist-packages' > /home/blanchard/tourne_disque/venv/lib/python3.11/site-packages/system-packages.pth
+    echo "Bridge to system packages created successfully."
+    
     echo "Python dependencies installed successfully."
 else
     echo "WARNING: requirements.txt file does not exist yet. Python dependencies will be installed during deployment."

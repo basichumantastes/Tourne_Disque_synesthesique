@@ -68,12 +68,6 @@ sshpass -p "${SSH_PASSWORD}" rsync -avz --exclude '.git/' \
            "${LOCAL_PATH}/src/raspberry/" \
            "${REMOTE_USER}@${REMOTE_HOST}:${REMOTE_PATH}/"
 
-# Synchronize deployment scripts
-log "Deploying tool scripts..."
-sshpass -p "${SSH_PASSWORD}" rsync -avz -e "ssh ${SSH_OPTS}" \
-           "${LOCAL_PATH}/tools/deployment/" \
-           "${REMOTE_USER}@${REMOTE_HOST}:${REMOTE_PATH}/tools/deployment/"
-
 if [ $? -eq 0 ]; then
     log "Files deployed successfully"
 else
@@ -84,9 +78,18 @@ fi
 # Install Python dependencies (update only)
 log "Updating Python dependencies..."
 sshpass -p "${SSH_PASSWORD}" ssh ${SSH_OPTS} ${REMOTE_USER}@${REMOTE_HOST} "
+    # Install system dependencies required for Python packages
+    sudo apt install -y libcap-dev
+    
+    # Install libcamera dependencies required for picamera2
+    sudo apt install -y python3-libcamera libcamera-apps python3-picamera2
+    
     cd ${REMOTE_PATH} 
     source venv/bin/activate
     pip install -r requirements.txt
+    
+    # Ensure picamera2 is explicitly installed in the venv
+    pip install picamera2
 "
 
 # Install and restart systemd services

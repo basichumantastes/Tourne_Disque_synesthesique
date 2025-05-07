@@ -19,3 +19,6 @@ RPi.GPIO>=0.7.0      # Raspberry Pi GPIO control
 
 # Environment
 python-dotenv>=0.19.0  # Environment variables management
+
+# System interaction
+python-prctl>=1.8.1   # Process control functionality (needed by picamera2)
