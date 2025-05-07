@@ -33,9 +33,9 @@ class LEDController:
         
         # Configuration OSC
         self.dispatcher = dispatcher.Dispatcher()
-        self.dispatcher.map("/color/rgb", self.handle_rgb_color)
-        # Ajout d'un handler pour les messages RGB bruts
-        self.dispatcher.map("/color/raw/rgb", self.handle_rgb_color)
+        # Mise à jour des handlers pour supporter le nouveau format d'adressage avec préfixe du module
+        self.dispatcher.map("/logic/color/rgb", self.handle_rgb_color)
+        self.dispatcher.map("/vision/color/raw/rgb", self.handle_rgb_color)
         
         # Serveur OSC
         osc_config = self.config['osc']['led']
@@ -46,8 +46,11 @@ class LEDController:
         
     def handle_rgb_color(self, address, r, g, b):
         """Gestion des couleurs RGB reçues via OSC"""
+        # Identifier la source du message pour le logging
+        source = address.split('/')[1] if len(address.split('/')) > 1 else "unknown"
+        
         self.led_strip.setcolourrgb(int(r), int(g), int(b))
-        print(f"LED couleur appliquée depuis {address}: R={r}, G={g}, B={b}")
+        print(f"LED couleur appliquée depuis {source}: R={r}, G={g}, B={b}")
         
     def run(self):
         """Démarre le serveur OSC"""

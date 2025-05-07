@@ -112,12 +112,10 @@ def main():
         parent_dir = Path(__file__).resolve().parent.parent
         network_config_path = os.path.join(parent_dir, 'network.json')
         
-        # Utiliser la config depuis le fichier
-        with open(network_config_path, 'r') as f:
-            config = json.load(f)
-        osc_config = config['osc']['logic']
-        router_ip = osc_config['ip']
-        router_port = osc_config['port']
+        # Utiliser la config depuis le fichier - routeur OSC a toujours la même adresse
+        router_ip = "127.0.0.1"
+        router_port = 5005
+        print(f"Utilisation de la configuration réseau du routeur OSC central: {router_ip}:{router_port}")
     else:
         # Utiliser les arguments ou les valeurs par défaut
         router_ip = args.router_ip
@@ -132,8 +130,9 @@ def main():
         while True:
             rgb, hsv = detector.get_frame_colors()
             if rgb is not None and hsv is not None:
-                osc_client.send_message("/color/raw/rgb", list(map(int, rgb)))
-                osc_client.send_message("/color/raw/hsv", list(map(int, hsv)))
+                # Utilisation du nouveau format d'adressage avec préfixe du module source
+                osc_client.send_message("/vision/color/raw/rgb", list(map(int, rgb)))
+                osc_client.send_message("/vision/color/raw/hsv", list(map(int, hsv)))
             time.sleep(0.1)  # 10 Hz
 
     except KeyboardInterrupt:

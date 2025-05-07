@@ -25,9 +25,19 @@ class OSCRouter:
                 cfg['ip'],
                 cfg['port']
             )
+            print(f"Client OSC configuré: {name} ({cfg['ip']}:{cfg['port']})")
 
-        # Stockage des modules enregistrés avec leurs ports
-        self.registered_modules = {}
+        # Table de routage hiérarchique des messages - simplifiée par module source
+        self.routes = {
+            # Routage par module source (notation avec / à la fin indique préfixe)
+            "/vision/": ["logic", "led"],     # Tous les messages vision vers logic et led
+            "/logic/": ["led", "puredata", "music_engine"],  # Messages logic vers LED, PD et music engine
+            "/music_engine/": ["logic", "puredata"],  # Messages music_engine vers logic et PD
+            "/arduino/": ["logic", "puredata"],  # Messages arduino vers logic et PD
+            
+            # Cas spécifiques qui surchargent les règles générales (optionnel)
+            "/vision/color/raw/hsv": ["logic"],  # HSV uniquement vers logic (surcharge du préfixe /vision/)
+        }
 
         # Configuration du serveur OSC local
         self.dispatcher = dispatcher.Dispatcher()
@@ -35,59 +45,56 @@ class OSCRouter:
         
         # Création du serveur
         self.server = osc_server.ThreadingOSCUDPServer(
-            ("127.0.0.1", 5005),  # Port local pour recevoir les messages des autres scripts
+            ("127.0.0.1", 5005),  # Port local pour recevoir les messages
             self.dispatcher
         )
+        
+        print("Table de routage OSC configurée:")
+        for address, destinations in self.routes.items():
+            print(f"  {address} → {', '.join(destinations)}")
 
     def setup_routes(self):
-        """Configure les routes OSC"""
-        # Routes pour les données de vision
-        self.dispatcher.map("/color/raw/rgb", self.handle_rgb)
-        self.dispatcher.map("/color/raw/hsv", self.handle_hsv)
+        """Configure un handler générique pour toutes les adresses possibles"""
+        # Configuration d'un handler par défaut qui traitera tous les messages
+        self.dispatcher.set_default_handler(self.handle_message)
         
-        # Routes pour les données de logic
-        self.dispatcher.map("/motion/speed", self.handle_speed)
-        self.dispatcher.map("/motion/direction", self.handle_direction)
+    def handle_message(self, address, *args):
+        """Handler qui route les messages selon le routage hiérarchique"""
+        # Essayer d'abord de trouver une correspondance exacte
+        if address in self.routes:
+            destinations = self.routes[address]
+            self._send_to_destinations(address, args, destinations)
+            return
+            
+        # Si pas de correspondance exacte, essayer le matching par préfixe
+        for prefix, destinations in self.routes.items():
+            if prefix.endswith('/') and address.startswith(prefix):
+                # Extraire le module source du pattern d'adresse
+                parts = address.split('/')
+                if len(parts) > 1:
+                    source_module = parts[1]
+                    print(f"Message de {source_module} routé par préfixe {prefix}: {address}")
+                
+                self._send_to_destinations(address, args, destinations)
+                return
         
-        # Route pour les événements génériques
-        self.dispatcher.map("/event", self.handle_event)
-        
-        # Route pour l'enregistrement des modules
-        self.dispatcher.map("/register/music_engine", self.register_music_engine)
-
-    def route_message(self, address, *args):
-        """Route un message vers toutes les destinations configurées"""
+        # Aucune route trouvée, on utilise le comportement par défaut (broadcast)
+        print(f"Aucune route configurée pour l'adresse: {address}")
+        self._send_to_all_clients(address, args)
+    
+    def _send_to_destinations(self, address, args, destinations):
+        """Méthode utilitaire pour envoyer un message aux destinations spécifiées"""
+        for dest in destinations:
+            if dest in self.clients:
+                self.clients[dest].send_message(address, args)
+            else:
+                print(f"Destination inconnue dans la table de routage: {dest}")
+                
+    def _send_to_all_clients(self, address, args):
+        """Méthode utilitaire pour diffuser un message à tous les clients"""
+        print(f"Diffusion du message à tous les clients: {address}")
         for client in self.clients.values():
-            client.send_message(address, args[0])
-
-    # Handlers pour chaque type de message
-    def handle_rgb(self, address, *args):
-        self.route_message("/color/raw/rgb", args)
-
-    def handle_hsv(self, address, *args):
-        self.route_message("/color/raw/hsv", args)
-
-    def handle_speed(self, address, *args):
-        self.route_message("/motion/speed", args)
-
-    def handle_direction(self, address, *args):
-        self.route_message("/motion/direction", args)
-        
-    def handle_event(self, address, *args):
-        """Gère les événements génériques"""
-        self.route_message("/event", args)
-        # Si le moteur musical est enregistré, lui envoyer directement le message
-        if "music_engine" in self.registered_modules:
-            port = self.registered_modules["music_engine"]
-            client = udp_client.SimpleUDPClient("127.0.0.1", port)
-            client.send_message("/event", args)
-
-    def register_music_engine(self, address, *args):
-        """Enregistre le port du moteur musical"""
-        if args and len(args) > 0:
-            port = int(args[0])
-            self.registered_modules["music_engine"] = port
-            print(f"Module music_engine enregistré sur le port {port}")
+            client.send_message(address, args)
 
     def run(self):
         """Démarre le serveur OSC"""

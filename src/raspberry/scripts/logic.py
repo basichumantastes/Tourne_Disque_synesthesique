@@ -71,8 +71,9 @@ class ColorProcessor:
             config = json.load(f)
             
         self.dispatcher = dispatcher.Dispatcher()
-        self.dispatcher.map("/color/raw/rgb", self.handle_rgb)
-        self.dispatcher.map("/color/raw/hsv", self.handle_hsv)
+        # Mise à jour pour utiliser les nouveaux formats d'adresse avec préfixe du module
+        self.dispatcher.map("/vision/color/raw/rgb", self.handle_rgb)
+        self.dispatcher.map("/vision/color/raw/hsv", self.handle_hsv)
         
         self.server = osc_server.ThreadingOSCUDPServer(
             (config['osc']['logic']['ip'], config['osc']['logic']['port']),
@@ -100,16 +101,16 @@ class ColorProcessor:
             self.rgb_ema[color] = self.update_ema(self.rgb_ema[color], avg)
             rgb_smooth[color] = int(self.rgb_ema[color])
         
-        # Envoi au contrôleur LED
-        self.osc.send_to_leds("/color/rgb", [
+        # Envoi au contrôleur LED avec nouveau format d'adressage
+        self.osc.send_to_leds("/logic/color/rgb", [
             rgb_smooth['r'],
             rgb_smooth['g'],
             rgb_smooth['b']
         ])
         
-        # Envoi à Pure Data
+        # Envoi à Pure Data avec nouveau format d'adressage
         for color, value in rgb_smooth.items():
-            self.osc.send_to_puredata(f"/color/rgb/{color}", value)
+            self.osc.send_to_puredata(f"/logic/color/rgb/{color}", value)
 
     def handle_hsv(self, address, h, s, v):
         """Traitement des données HSV reçues"""
@@ -119,9 +120,9 @@ class ColorProcessor:
             self.hsv_ema[param] = self.update_ema(self.hsv_ema[param], value)
             hsv_smooth[param] = int(self.hsv_ema[param])
             
-            # Envoi à Pure Data
+            # Envoi à Pure Data avec nouveau format d'adressage
             self.osc.send_to_puredata(
-                f"/color/hsv/{param}",
+                f"/logic/color/hsv/{param}",
                 hsv_smooth[param]
             )
 

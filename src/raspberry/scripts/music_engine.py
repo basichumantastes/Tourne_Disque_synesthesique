@@ -43,9 +43,14 @@ def main():
     # Charger la configuration réseau
     config = load_network_config()
     
-    # Configuration pour recevoir les messages du routeur OSC
-    local_ip = "127.0.0.1"
-    local_port = 9003  # Port pour recevoir les messages du routeur OSC
+    # Récupérer la configuration du module music_engine
+    if 'music_engine' not in config['osc']:
+        print("Erreur: Configuration 'music_engine' non trouvée dans network.json")
+        sys.exit(1)
+        
+    music_engine_config = config['osc']['music_engine']
+    local_ip = music_engine_config['ip']
+    local_port = music_engine_config['port']
     
     # Créer un client pour envoyer des messages au routeur OSC
     router_client = udp_client.SimpleUDPClient("127.0.0.1", 5005)
@@ -58,18 +63,6 @@ def main():
     server = ThreadingOSCUDPServer((local_ip, local_port), dispatcher)
     print(f"Moteur musical démarré sur {local_ip}:{local_port}")
     print("En attente d'événements OSC sur l'adresse '/event'...")
-    
-    # Envoyer un message au routeur OSC pour s'enregistrer
-    router_client.send_message("/register/music_engine", local_port)
-    print("Enregistré auprès du routeur OSC central")
-    
-    # Exemple d'envoi périodique d'un message au routeur (à des fins de débogage)
-    # try:
-    #     while True:
-    #         router_client.send_message("/music/status", "alive")
-    #         time.sleep(10)
-    # except KeyboardInterrupt:
-    #     print("Arrêt du moteur musical...")
     
     # Boucle infinie pour recevoir les messages
     server.serve_forever()
