@@ -33,9 +33,13 @@ class LEDController:
         
         # Configuration OSC
         self.dispatcher = dispatcher.Dispatcher()
-        # Mise à jour des handlers pour supporter le nouveau format d'adressage avec préfixe du module
-        self.dispatcher.map("/logic/color/rgb", self.handle_rgb_color)
+        
+        # Écouter uniquement les valeurs RGB brutes provenant du module vision
         self.dispatcher.map("/vision/color/raw/rgb", self.handle_rgb_color)
+        
+        # On n'écoute plus les valeurs EMA du module logic
+        # self.dispatcher.map("/logic/color/rgb", self.handle_rgb_color)
+        # self.dispatcher.map("/logic/color/ema/rgb", self.handle_rgb_color)
         
         # Serveur OSC
         osc_config = self.config['osc']['led']

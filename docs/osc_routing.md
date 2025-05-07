@@ -107,23 +107,38 @@ All modules are declared in the `network.json` file. This is the central configu
 ### Color Data Communication
 
 1. `vision.py` captures colors and sends:
-   - `/vision/color/raw/rgb` → routed to logic and led (rule `/vision/`)
-   - `/vision/color/raw/hsv` → routed only to logic (specific rule)
+   - `/vision/color/raw/rgb` (liste groupée) → routed to logic and led (rule `/vision/`)
+   - `/vision/color/raw/hsv` (liste groupée) → routed only to logic (specific rule)
+   - `/vision/color/raw/rgb/r`, `/vision/color/raw/rgb/g`, `/vision/color/raw/rgb/b` (valeurs individuelles) → routed to logic
+   - `/vision/color/raw/hsv/h`, `/vision/color/raw/hsv/s`, `/vision/color/raw/hsv/v` (valeurs individuelles) → routed to logic
 
-2. `logic.py` processes the values and sends:
-   - `/logic/color/rgb` → routed to led, puredata, music_engine (rule `/logic/`)
-   - `/logic/color/hsv/h` → routed to led, puredata, music_engine (rule `/logic/`)
+2. `logic.py` processes the values with Exponential Moving Average (EMA) and sends:
+   - `/logic/color/ema/r`, `/logic/color/ema/g`, `/logic/color/ema/b` (valeurs individuelles RGB) → routed to puredata only
+   - `/logic/color/ema/h`, `/logic/color/ema/s`, `/logic/color/ema/v` (valeurs individuelles HSV) → routed to puredata only
+
+3. Flux des données:
+   - Contrôleur LED: utilise les valeurs RGB brutes du module vision (`/vision/color/raw/rgb`)
+   - Pure Data: utilise les valeurs EMA calculées par le module logic (`/logic/color/ema/*`)
 
 ## Standardized OSC Addresses
 
 | OSC Address | Description | Data Format |
 |-------------|-------------|-------------------|
-| `/vision/color/raw/rgb` | Raw RGB color | [r, g, b] (0-255) |
-| `/vision/color/raw/hsv` | Raw HSV color | [h, s, v] (h: 0-360, s,v: 0-100) |
-| `/logic/color/rgb` | Processed RGB color | [r, g, b] (0-255) |
-| `/logic/color/hsv/h` | Processed Hue | [h] (0-360) |
-| `/logic/color/hsv/s` | Processed Saturation | [s] (0-100) |
-| `/logic/color/hsv/v` | Processed Value | [v] (0-100) |
+| `/vision/color/raw/rgb` | Raw RGB color (grouped) | [r, g, b] (0-255) |
+| `/vision/color/raw/rgb/r` | Raw red component | r (0-255) |
+| `/vision/color/raw/rgb/g` | Raw green component | g (0-255) |
+| `/vision/color/raw/rgb/b` | Raw blue component | b (0-255) |
+| `/vision/color/raw/hsv` | Raw HSV color (grouped) | [h, s, v] (h: 0-360, s,v: 0-100) |
+| `/vision/color/raw/hsv/h` | Raw hue component | h (0-360) |
+| `/vision/color/raw/hsv/s` | Raw saturation component | s (0-100) |
+| `/vision/color/raw/hsv/v` | Raw value component | v (0-100) |
+| `/logic/color/ema/rgb` | EMA-processed RGB color (grouped) | [r, g, b] (0-255) |
+| `/logic/color/ema/r` | EMA-processed red component | r (0-255) |
+| `/logic/color/ema/g` | EMA-processed green component | g (0-255) |
+| `/logic/color/ema/b` | EMA-processed blue component | b (0-255) |
+| `/logic/color/ema/h` | EMA-processed hue | h (0-360) |
+| `/logic/color/ema/s` | EMA-processed saturation component | s (0-100) |
+| `/logic/color/ema/v` | EMA-processed value | v (0-100) |
 | `/arduino/motion/speed` | Rotation speed | [speed] (-1.0 to 1.0) |
 | `/arduino/motion/direction` | Rotation direction | [direction] (-1, 0, 1) |
 | `/logic/event` | Logic event | [type, *params] |

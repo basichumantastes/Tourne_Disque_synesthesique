@@ -30,13 +30,13 @@ class OSCRouter:
         # Table de routage hiérarchique des messages - simplifiée par module source
         self.routes = {
             # Routage par module source (notation avec / à la fin indique préfixe)
-            "/vision/": ["logic", "led"],     # Tous les messages vision vers logic et led
-            "/logic/": ["led", "puredata", "music_engine"],  # Messages logic vers LED, PD et music engine
-            "/music_engine/": ["logic", "puredata"],  # Messages music_engine vers logic et PD
-            "/arduino/": ["logic", "puredata"],  # Messages arduino vers logic et PD
+            "/vision/": ["logic", "led", "dev"],     # Tous les messages vision vers logic, led et dev
+            "/logic/": ["led", "puredata", "music_engine", "dev"],  # Messages logic vers LED, PD, music engine et dev
+            "/music_engine/": ["logic", "puredata", "dev"],  # Messages music_engine vers logic, PD et dev
+            "/arduino/": ["logic", "puredata", "dev"],  # Messages arduino vers logic, PD et dev
             
             # Cas spécifiques qui surchargent les règles générales (optionnel)
-            "/vision/color/raw/hsv": ["logic"],  # HSV uniquement vers logic (surcharge du préfixe /vision/)
+            #"/vision/color/raw/hsv": ["logic", "dev"],  # HSV vers logic et dev (surcharge du préfixe /vision/)
         }
 
         # Configuration du serveur OSC local

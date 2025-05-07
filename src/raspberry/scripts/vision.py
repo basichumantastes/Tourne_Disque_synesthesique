@@ -19,7 +19,7 @@ class ColorDetector:
     def setup_camera(self):
         try:
             # Try to use picamera2 (recommended for Raspberry Pi 5)
-            from picamera2 import Picamera2
+            from picamera2 import Picamera2 # type: ignore
             
             # Initialize the camera
             self.picam2 = Picamera2()
@@ -130,10 +130,25 @@ def main():
         while True:
             rgb, hsv = detector.get_frame_colors()
             if rgb is not None and hsv is not None:
-                # Utilisation du nouveau format d'adressage avec préfixe du module source
-                osc_client.send_message("/vision/color/raw/rgb", list(map(int, rgb)))
-                osc_client.send_message("/vision/color/raw/hsv", list(map(int, hsv)))
-            time.sleep(0.1)  # 10 Hz
+                # Conversion en entiers
+                r, g, b = map(int, rgb)
+                h, s, v = map(int, hsv)
+                
+                # Envoi individuel des composantes RGB
+                osc_client.send_message("/vision/color/raw/rgb/r", r)
+                osc_client.send_message("/vision/color/raw/rgb/g", g)
+                osc_client.send_message("/vision/color/raw/rgb/b", b)
+                
+                # Envoi individuel des composantes HSV
+                osc_client.send_message("/vision/color/raw/hsv/h", h)
+                osc_client.send_message("/vision/color/raw/hsv/s", s)
+                osc_client.send_message("/vision/color/raw/hsv/v", v)
+                
+                # Conservation de l'envoi des valeurs groupées pour compatibilité
+                osc_client.send_message("/vision/color/raw/rgb", [r, g, b])
+                osc_client.send_message("/vision/color/raw/hsv", [h, s, v])
+                
+            time.sleep(0.15)  # 10 Hz
 
     except KeyboardInterrupt:
         print("\nArrêt de la capture")
