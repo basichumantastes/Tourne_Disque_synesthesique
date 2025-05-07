@@ -56,11 +56,25 @@ if [ -f "$CONFIG_PATH" ]; then
         CAMERA_CONFIG_CHANGED=1
     fi
     
-    if [ "$CAMERA_CONFIG_CHANGED" == "1" ]; then
-        echo "Camera configuration has been modified, a restart will be necessary."
+    # Disable HDMI audio output to force USB audio card usage
+    echo "=== Disabling HDMI audio output ==="
+    if ! grep -q "hdmi_ignore_edid_audio=1" "$CONFIG_PATH"; then
+        sudo sh -c "echo 'hdmi_ignore_edid_audio=1' >> $CONFIG_PATH"
+        echo "EDID audio disabled for HDMI"
+        AUDIO_CONFIG_CHANGED=1
+    fi
+    
+    if ! grep -q "dtparam=audio=off" "$CONFIG_PATH"; then
+        sudo sh -c "echo 'dtparam=audio=off' >> $CONFIG_PATH"
+        echo "On-board audio disabled"
+        AUDIO_CONFIG_CHANGED=1
+    fi
+    
+    if [ "$CAMERA_CONFIG_CHANGED" == "1" ] || [ "$AUDIO_CONFIG_CHANGED" == "1" ]; then
+        echo "System configuration has been modified, a restart will be necessary."
     fi
 else
-    echo "WARNING: File $CONFIG_PATH does not exist. Camera configuration not performed."
+    echo "WARNING: File $CONFIG_PATH does not exist. System configuration not performed."
 fi
 
 # Creating project folders and logs
@@ -143,8 +157,8 @@ fi
 
 echo
 echo "=== NEXT STEPS ==="
-if [ "$CAMERA_CONFIG_CHANGED" == "1" ]; then
-    echo "1. IMPORTANT: Restart the Raspberry Pi to apply camera configuration:"
+if [ "$CAMERA_CONFIG_CHANGED" == "1" ] || [ "$AUDIO_CONFIG_CHANGED" == "1" ]; then
+    echo "1. IMPORTANT: Restart the Raspberry Pi to apply system configuration:"
     echo "   sudo reboot"
     echo "2. After restart, deploy the code with ./deploy.sh from your development machine"
 else

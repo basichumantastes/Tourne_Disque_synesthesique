@@ -8,7 +8,8 @@ Type=simple
 User=blanchard
 ExecStart=/usr/bin/puredata -nogui \
   -send "pd dsp 1" \
-  -audiodev 0 0 0 0 \
+  -audioindev 1 -audiooutdev 1 \
+  -audiodev 1 \
   /home/blanchard/tourne_disque/puredata/main.pd
 WorkingDirectory=/home/blanchard/tourne_disque
 Restart=always
