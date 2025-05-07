@@ -15,7 +15,8 @@ sudo apt-get install -y \
 ### Configuration Hardware
 
 #### Camera
-- Activer la caméra dans `raspi-config`
+- Modèle utilisé : Raspberry Pi Camera v2
+- Le script d'installation configure automatiquement les paramètres de la caméra
 - Distance : ajustée pour cadrer la zone de détection
 
 #### LED

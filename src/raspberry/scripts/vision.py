@@ -11,14 +11,50 @@ from pathlib import Path
 
 class ColorDetector:
     def __init__(self):
+        self.using_picamera2 = False
+        self.picam2 = None
+        self.cap = None
         self.setup_camera()
 
     def setup_camera(self):
-        gst_pipeline = "libcamerasrc ! video/x-raw,width=320,height=240,framerate=15/1 ! videoconvert ! video/x-raw,format=BGR ! appsink drop=true max-buffers=1 sync=false"
-        self.cap = cv2.VideoCapture(gst_pipeline, cv2.CAP_GSTREAMER)
-        
-        if not self.cap.isOpened():
-            raise RuntimeError("Impossible d'initialiser la capture vidéo")
+        try:
+            # Try to use picamera2 (recommended for Raspberry Pi 5)
+            from picamera2 import Picamera2
+            
+            # Initialize the camera
+            self.picam2 = Picamera2()
+            
+            # Configure the camera
+            config = self.picam2.create_preview_configuration(
+                main={"size": (320, 240), "format": "RGB888"},
+                controls={"FrameRate": 15}
+            )
+            self.picam2.configure(config)
+            
+            # Start the camera
+            self.picam2.start()
+            
+            # Set cap to None to indicate we're using picamera2
+            self.cap = None
+            self.using_picamera2 = True
+            print("Using picamera2 for camera capture")
+            
+        except (ImportError, RuntimeError) as e:
+            # Fallback to OpenCV if picamera2 is not available
+            print(f"Warning: {str(e)}")
+            print("Falling back to OpenCV for camera capture")
+            gst_pipeline = "libcamerasrc ! video/x-raw,width=320,height=240,framerate=15/1 ! videoconvert ! video/x-raw,format=BGR ! appsink drop=true max-buffers=1 sync=false"
+            self.cap = cv2.VideoCapture(gst_pipeline, cv2.CAP_GSTREAMER)
+            self.using_picamera2 = False
+            
+            if not self.cap.isOpened():
+                # Try a simpler pipeline as a last resort
+                print("Trying simpler pipeline...")
+                gst_pipeline = "libcamerasrc ! video/x-raw,width=320,height=240 ! videoconvert ! video/x-raw,format=BGR ! appsink"
+                self.cap = cv2.VideoCapture(gst_pipeline, cv2.CAP_GSTREAMER)
+                
+                if not self.cap.isOpened():
+                    raise RuntimeError("Impossible d'initialiser la capture vidéo")
 
     def get_dominant_color(self, frame):
         """Extrait la couleur dominante en RGB"""
@@ -26,7 +62,12 @@ class ColorDetector:
         pixels = np.float32(frame.reshape(-1, 3))
         criteria = (cv2.TERM_CRITERIA_EPS + cv2.TERM_CRITERIA_MAX_ITER, 5, 1.0)
         _, _, palette = cv2.kmeans(pixels, 1, None, criteria, 1, cv2.KMEANS_RANDOM_CENTERS)
-        return palette[0][::-1]  # BGR vers RGB
+        
+        # Handle BGR vs RGB based on camera source
+        if self.using_picamera2:
+            return palette[0]  # Already in RGB format
+        else:
+            return palette[0][::-1]  # BGR to RGB conversion
 
     def get_hsv(self, rgb):
         """Convertit RGB en HSV"""
@@ -36,9 +77,14 @@ class ColorDetector:
 
     def get_frame_colors(self):
         """Capture une frame et retourne les couleurs RGB et HSV"""
-        ret, frame = self.cap.read()
-        if not ret:
-            return None, None
+        if self.using_picamera2:
+            # Get frame from picamera2
+            frame = self.picam2.capture_array()
+        else:
+            # Get frame from OpenCV
+            ret, frame = self.cap.read()
+            if not ret:
+                return None, None
 
         rgb = self.get_dominant_color(frame)
         hsv = self.get_hsv(rgb)
@@ -46,7 +92,9 @@ class ColorDetector:
 
     def close(self):
         """Ferme proprement la capture vidéo"""
-        if self.cap is not None:
+        if self.using_picamera2 and self.picam2 is not None:
+            self.picam2.stop()
+        elif self.cap is not None:
             self.cap.release()
 
 def main():

@@ -1,13 +1,21 @@
+# Note: Some packages are installed both via apt and pip
+# to ensure compatibility. The following packages are also
+# installed via apt in setup_raspberry_complete.sh:
+# - python3-opencv (equivalent to opencv-python)
+# - python3-picamera2
+# - python3-libcamera (system dependency for picamera2)
+
 # Communication
-pyserial>=3.5        # Communication série avec Arduino
-python-osc>=1.8.1    # Communication OSC
+pyserial>=3.5        # Serial communication with Arduino
+python-osc>=1.8.1    # OSC communication
 
-# Traitement d'image et vidéo
-opencv-python>=4.8.0  # OpenCV pour la capture vidéo
-numpy>=1.24.0        # Calculs numériques pour OpenCV
+# Image and video processing
+opencv-python>=4.8.0  # OpenCV for video capture
+numpy>=1.24.0        # Numerical calculations for OpenCV
+picamera2>=0.3.9     # Library for Raspberry Pi Camera on Pi 5
 
-# Hardware Raspberry Pi
-RPi.GPIO>=0.7.0      # Contrôle GPIO Raspberry Pi
+# Raspberry Pi Hardware
+RPi.GPIO>=0.7.0      # Raspberry Pi GPIO control
 
-# Environnement
-python-dotenv>=0.19.0  # Gestion des variables d'environnement
+# Environment
+python-dotenv>=0.19.0  # Environment variables management
