@@ -1,28 +1,28 @@
-# Machine Synesthésique - Documentation Contextuelle
+# Synesthetic Machine - Contextual Documentation
 
-## Présentation du Projet
+## Project Overview
 
-La Machine Synesthésique est une installation artistique interactive qui transforme des toiles circulaires en partitions visuelles et sonores. Cette œuvre crée un pont entre différentes modalités sensorielles (vision, ouïe), incarnant le phénomène neurologique de synesthésie où un stimulus sensoriel déclenche automatiquement une expérience dans une autre modalité sensorielle.
+The Synesthetic Machine is an interactive art installation that transforms circular canvases into visual and sound scores. This work creates a bridge between different sensory modalities (vision, hearing), embodying the neurological phenomenon of synesthesia where a sensory stimulus automatically triggers an experience in another sensory modality.
 
-## Concept Artistique
+## Artistic Concept
 
-L'installation permet de "voir le son" et d'"entendre les couleurs". Chaque toile circulaire devient une partition unique qui, lorsqu'elle est placée sur le dispositif et mise en rotation, génère simultanément :
-- Une réponse lumineuse qui reflète les couleurs de la toile
-- Une composition musicale générée algorithmiquement en fonction des données chromatiques
+The installation allows visitors to "see sound" and "hear colors." Each circular canvas becomes a unique score that, when placed on the device and set in rotation, simultaneously generates:
+- A light response that reflects the colors of the canvas
+- An algorithmically generated musical composition based on the chromatic data
 
-La frontière entre arts visuels et musique s'efface pour créer une expérience multi-sensorielle immersive où les sens se répondent et s'amplifient mutuellement.
+The boundary between visual arts and music fades to create an immersive multi-sensory experience where the senses respond to and amplify each other.
 
-## Architecture Technique
+## Technical Architecture
 
-### Vue d'ensemble
+### Overview
 
-Le système repose sur une architecture modulaire distribuée, communiquant principalement via le protocole OSC (Open Sound Control). Cette approche permet une grande flexibilité et une séparation claire des responsabilités entre les différents composants.
+The system is based on a distributed modular architecture, communicating primarily via the OSC (Open Sound Control) protocol. This approach allows for great flexibility and a clear separation of responsibilities between the different components.
 
 ```
 ┌─────────────┐    ┌─────────────┐    ┌─────────────┐
 │             │    │             │    │             │
-│   Vision    │───►│   Logique   │───►│     LED     │
-│  (Caméra)   │    │(Traitement) │    │ (Affichage) │
+│   Vision    │───►│   Logic     │───►│     LED     │
+│  (Camera)   │    │ (Processing)│    │  (Display)  │
 │             │    │             │    │             │
 └─────────────┘    └──────┬──────┘    └─────────────┘
                           │
@@ -35,92 +35,83 @@ Le système repose sur une architecture modulaire distribuée, communiquant prin
                    └─────────────┘
 ```
 
-### Composants Hardware
+### Hardware Components
 
-- **Raspberry Pi 5** : Unité centrale qui héberge les services principaux
-- **Module Caméra** : Capture en temps réel des toiles en rotation
-- **Bandeau LED** : Reproduit les couleurs analysées sous forme lumineuse
-- **Système audio** : Restitue la composition sonore générée
-- **Mécanisme de rotation** : Permet la rotation constante des toiles circulaires
+- **Raspberry Pi 5**: Central unit hosting the main services
+- **Camera Module**: Real-time capture of rotating canvases
+- **LED Strip**: Reproduces analyzed colors in light form
+- **Audio System**: Plays back the generated sound composition
+- **Rotation Mechanism**: Enables constant rotation of circular canvases
 
-### Composants Software
+### Software Components
 
-Le système est constitué de plusieurs modules indépendants, chacun ayant une responsabilité spécifique :
+The system consists of several independent modules, each with a specific responsibility:
 
-#### 1. Module Vision (`vision.py`)
-- Capture d'images via la caméra
-- Analyse des couleurs en temps réel
-- Extraction des valeurs RGB et HSV
-- Transmission des données chromatiques via OSC
+#### 1. Vision Module (`vision.py`)
+- Image capture via camera
+- Real-time color analysis
+- Extraction of RGB and HSV values
+- Transmission of chromatic data via OSC
 
-#### 2. Module Logique (`logic.py`)
-- Coordination centrale du système
-- Réception et traitement des données couleur
-- Techniques de lissage (buffers circulaires, moyenne mobile exponentielle)
-- Routage des informations vers les autres modules
+#### 2. Logic Module (`logic.py`)
+- Central system coordination
+- Reception and processing of color data
+- Smoothing techniques (circular buffers, exponential moving average)
+- Routing information to other modules
 
-#### 3. Module LED (`led_controller.py`)
-- Contrôle du bandeau LED
-- Reproduction fidèle des couleurs analysées
-- Gestion des transitions et effets lumineux
+#### 3. LED Module (`led_controller.py`)
+- LED strip control
+- Faithful reproduction of analyzed colors
+- Management of transitions and light effects
 
-#### 4. Module Audio (Pure Data)
-- Génération sonore algorithmique
-- Mapping des valeurs RGB/HSV vers des paramètres musicaux
-- Création d'une ambiance sonore correspondant aux couleurs
+#### 4. Audio Module (Pure Data)
+- Algorithmic sound generation
+- Mapping RGB/HSV values to musical parameters
+- Creation of a sound atmosphere corresponding to colors
 
-### Flux de Données
+### Data Flow
 
-1. La caméra capture l'image de la toile en rotation
-2. Les données de couleur sont extraites et envoyées au module logique
-3. Le module logique applique des algorithmes de lissage pour stabiliser les transitions
-4. Les valeurs stabilisées sont envoyées simultanément :
-   - Au contrôleur LED pour la reproduction lumineuse
-   - À Pure Data pour la génération sonore
+1. The camera captures the image of the rotating canvas
+2. Color data is extracted and sent to the logic module
+3. The logic module applies smoothing algorithms to stabilize transitions
+4. The stabilized values are simultaneously sent to:
+   - The LED controller for light reproduction
+   - Pure Data for sound generation
 
-## Détails Techniques
+## Technical Details
 
-### Protocole de Communication
+### Communication Protocol
 
-L'ensemble du système utilise OSC (Open Sound Control) pour la communication entre composants. Les différents services communiquent via UDP sur des ports spécifiques définis dans le fichier `network.json`.
+The entire system uses OSC (Open Sound Control) for communication between components. The different services communicate via UDP on specific ports defined in the `network.json` file.
 
-### Traitement des Couleurs
+### Color Processing
 
-Le système utilise plusieurs techniques pour garantir une expérience fluide et stable :
+The system uses several techniques to ensure a smooth and stable experience:
 
-- **Buffers circulaires** : Stockage temporaire des N dernières valeurs RGB
-- **Moyenne mobile exponentielle (EMA)** : Algorithme de lissage avec un facteur alpha très faible (0.0005) pour des transitions ultra-douces
-- **Double représentation colorimétrique** : Utilisation simultanée des espaces RGB et HSV pour enrichir les possibilités expressives
+- **Circular Buffers**: Temporary storage of the last N RGB values
+- **Exponential Moving Average (EMA)**: Smoothing algorithm with a very low alpha factor (0.0005) for ultra-smooth transitions
+- **Dual Color Representation**: Simultaneous use of RGB and HSV color spaces to enrich expressive possibilities
 
-### Services Systemd
+### Systemd Services
 
-L'installation fonctionne comme un ensemble de services systemd sur le Raspberry Pi, garantissant :
-- Démarrage automatique au boot
-- Redémarrage en cas de crash
-- Gestion des dépendances entre services
+The installation functions as a set of systemd services on the Raspberry Pi, ensuring:
+- Automatic startup at boot
+- Restart in case of crash
+- Management of dependencies between services
 
-## Déploiement et Maintenance
+## Deployment and Maintenance
 
 ### Installation
 
-Le déploiement est automatisé via des scripts situés dans le dossier `tools/deployment/` :
-- `setup_raspberry.sh` : Configuration initiale du Raspberry Pi
-- `deploy.sh` : Déploiement des mises à jour du code
+Deployment is automated via scripts located in the `tools/deployment/` folder:
+- `setup_raspberry_complete.sh`: Initial Raspberry Pi configuration
+- `deploy.sh`: Deployment of code updates
 
-### Dépendances
+### Dependencies
 
-Les dépendances du projet sont gérées via pip et documentées dans différents fichiers requirements :
-- `requirements.txt` : Dépendances principales pour le Raspberry Pi
-- `dev-requirements.txt` : Dépendances additionnelles pour le développement
-- `mac-requirements.txt` : Dépendances spécifiques pour macOS (développement)
+Project dependencies are managed via pip and documented in requirements files:
+- `src/raspberry/requirements.txt`: Main dependencies for the Raspberry Pi
+- `requirements/mac-requirements.txt`: Specific dependencies for macOS (development)
 
-## Évolutions Possibles
 
-- Développement d'une interface web de contrôle et visualisation
-- Intégration de techniques d'intelligence artificielle pour l'analyse des motifs
-- Ajout de nouveaux mappings couleur-son plus complexes
-- Création d'un mode "collectif" permettant de combiner plusieurs toiles
-
----
-
-*Documentation créée le 6 mai 2025*
+*Documentation updated on May 7, 2025*
