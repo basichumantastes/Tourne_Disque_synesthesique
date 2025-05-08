@@ -24,6 +24,11 @@
             "ip": "192.168.0.123",
             "port": 9010,
             "description": "Mac local pour le développement du patch Pure Data"
+        },
+        "router": {
+            "ip": "127.0.0.1",
+            "port": 5005,
+            "description": "OSC Router central qui gère la distribution des messages entre les modules"
         }
     }
 }

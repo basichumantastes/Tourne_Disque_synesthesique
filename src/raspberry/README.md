@@ -62,6 +62,37 @@ The following systemd services are automatically installed and configured:
 - `led_controller.service`: LED strip control
 - `puredata.service`: Audio processing
 
+## Arduino Integration
+
+### Setup
+Arduino integration requires Arduino CLI on the Raspberry Pi:
+```bash
+# Check if Arduino CLI is installed
+arduino-cli version
+
+# If not installed, install it
+curl -fsSL https://raw.githubusercontent.com/arduino/arduino-cli/master/install.sh | sh
+```
+
+### Uploading Code
+To upload code to an Arduino connected to the Raspberry Pi:
+```bash
+# Compile and upload Arduino sketch
+arduino-cli compile --fqbn arduino:avr:uno /path/to/sketch
+arduino-cli upload -p /dev/ttyACM0 --fqbn arduino:avr:uno /path/to/sketch
+```
+
+### Serial Communication
+Monitor serial output from Arduino:
+```bash
+arduino-cli monitor -p /dev/ttyACM0
+```
+
+### Troubleshooting
+- Check Arduino connection: `ls -l /dev/tty*`
+- Permission issues: `sudo usermod -a -G dialout $USER`
+- If upload fails, try: `sudo chmod 666 /dev/ttyACM0`
+
 ## Troubleshooting
 
 ### Service Status

@@ -1,0 +1,16 @@
+[Unit]
+Description=Arduino Serial Communication Service
+After=network.target osc_router.service
+Wants=osc_router.service
+
+[Service]
+Type=simple
+User=blanchard
+Environment=PYTHONPATH=/home/blanchard/tourne_disque
+ExecStart=/home/blanchard/tourne_disque/venv/bin/python /home/blanchard/tourne_disque/scripts/arduino_serial.py
+WorkingDirectory=/home/blanchard/tourne_disque
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target

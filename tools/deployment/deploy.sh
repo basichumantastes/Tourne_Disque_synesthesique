@@ -14,6 +14,35 @@ log() {
     echo "[$(date '+%Y-%m-%d %H:%M:%S')] $1"
 }
 
+# Parse command-line arguments
+SKIP_SETUP=0
+ARDUINO_UPLOAD=0
+
+while [[ $# -gt 0 ]]; do
+    case "$1" in
+        --skip-setup)
+            SKIP_SETUP=1
+            shift
+            ;;
+        --with-arduino)
+            ARDUINO_UPLOAD=1
+            shift
+            ;;
+        *)
+            echo "Unknown option: $1"
+            echo "Usage: $0 [--skip-setup] [--with-arduino]"
+            exit 1
+            ;;
+    esac
+done
+
+# Confirmation log
+if [ "$ARDUINO_UPLOAD" -eq 0 ]; then
+    log "Deploying without Arduino functionality"
+else
+    log "Deploying with Arduino functionality enabled"
+fi
+
 # Check if password file exists
 if [ ! -f "${PASSWORD_FILE}" ]; then
     log "Error: The .ssh_password file does not exist at the project root."
@@ -92,6 +121,26 @@ sshpass -p "${SSH_PASSWORD}" ssh ${SSH_OPTS} ${REMOTE_USER}@${REMOTE_HOST} "
     pip install picamera2
 "
 
+# Upload Arduino code if requested
+if [ "$ARDUINO_UPLOAD" -eq 1 ]; then
+    log "Uploading Arduino code..."
+    sshpass -p "${SSH_PASSWORD}" ssh ${SSH_OPTS} ${REMOTE_USER}@${REMOTE_HOST} "
+        cd ${REMOTE_PATH}/src/arduino/platformio
+        
+        # Check if Arduino is connected
+        if [ -e /dev/ttyACM0 ]; then
+            # Compile and upload Arduino code
+            arduino-cli compile --fqbn arduino:avr:uno .
+            arduino-cli upload -p /dev/ttyACM0 --fqbn arduino:avr:uno .
+            echo 'Arduino code uploaded successfully'
+        else
+            echo 'Arduino not detected at /dev/ttyACM0, skipping upload'
+        fi
+    "
+else
+    log "Skipping Arduino code upload as requested"
+fi
+
 # Install and restart systemd services
 log "Updating services..."
 sshpass -p "${SSH_PASSWORD}" ssh ${SSH_OPTS} ${REMOTE_USER}@${REMOTE_HOST} "
@@ -107,8 +156,17 @@ sshpass -p "${SSH_PASSWORD}" ssh ${SSH_OPTS} ${REMOTE_USER}@${REMOTE_HOST} "
         sudo systemctl enable \$service_name
     done
     
-    # Restart all services
+    # Restart all services except arduino_serial if Arduino upload wasn't requested
     sudo systemctl restart osc_router.service vision.service logic.service puredata.service led_controller.service music_engine.service
+    
+    # Only restart arduino_serial service if Arduino upload was requested
+    if [ \"$ARDUINO_UPLOAD\" -eq 1 ]; then
+        sudo systemctl restart arduino_serial.service
+    else
+        log \"Skipping arduino_serial.service restart\"
+        # Make sure arduino_serial service is stopped to avoid errors
+        sudo systemctl stop arduino_serial.service
+    fi
 "
 
 # Check services status
@@ -131,6 +189,15 @@ sshpass -p "${SSH_PASSWORD}" ssh ${SSH_OPTS} ${REMOTE_USER}@${REMOTE_HOST} "
     
     echo '=== Vision Status ==='
     sudo systemctl status vision.service | head -n 5
+    
+    # Only show arduino_serial status if it was requested
+    if [ \"$ARDUINO_UPLOAD\" -eq 1 ]; then
+        echo '=== Arduino Serial Status ==='
+        sudo systemctl status arduino_serial.service | head -n 5
+    else
+        echo '=== Arduino Serial Status ==='
+        echo 'Service not started (Arduino upload was not requested)'
+    fi
 "
 
 log "Deployment completed successfully"

@@ -26,6 +26,7 @@ ENV/
 *.swp
 *.swo
 .DS_Store
+*.code-workspace
 
 # Fichiers de build et temporaires
 build/

@@ -18,14 +18,20 @@ class OSCRouter:
         with open(network_config_path, 'r') as f:
             self.config = json.load(f)
         
+        # Récupération de la configuration du router
+        self.router_ip = self.config['osc']['router']['ip']
+        self.router_port = self.config['osc']['router']['port']
+        
         # Création des clients OSC pour chaque destination
         self.clients = {}
         for name, cfg in self.config['osc'].items():
-            self.clients[name] = udp_client.SimpleUDPClient(
-                cfg['ip'],
-                cfg['port']
-            )
-            print(f"Client OSC configuré: {name} ({cfg['ip']}:{cfg['port']})")
+            # Ne pas créer de client pour le router lui-même
+            if name != 'router':
+                self.clients[name] = udp_client.SimpleUDPClient(
+                    cfg['ip'],
+                    cfg['port']
+                )
+                print(f"Client OSC configuré: {name} ({cfg['ip']}:{cfg['port']})")
 
         # Table de routage hiérarchique des messages - simplifiée par module source
         self.routes = {
@@ -45,10 +51,11 @@ class OSCRouter:
         
         # Création du serveur
         self.server = osc_server.ThreadingOSCUDPServer(
-            ("127.0.0.1", 5005),  # Port local pour recevoir les messages
+            (self.router_ip, self.router_port),  # Utilise les valeurs de la configuration
             self.dispatcher
         )
         
+        print(f"Router OSC configuré sur {self.router_ip}:{self.router_port}")
         print("Table de routage OSC configurée:")
         for address, destinations in self.routes.items():
             print(f"  {address} → {', '.join(destinations)}")

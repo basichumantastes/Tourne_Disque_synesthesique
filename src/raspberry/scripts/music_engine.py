@@ -52,8 +52,19 @@ def main():
     local_ip = music_engine_config['ip']
     local_port = music_engine_config['port']
     
+    # Récupérer la configuration du routeur OSC central
+    if 'router' not in config['osc']:
+        print("Erreur: Configuration 'router' non trouvée dans network.json")
+        print("Utilisation des valeurs par défaut pour le routeur OSC (127.0.0.1:5005)")
+        router_ip = "127.0.0.1"
+        router_port = 5005
+    else:
+        router_ip = config['osc']['router']['ip']
+        router_port = config['osc']['router']['port']
+    
     # Créer un client pour envoyer des messages au routeur OSC
-    router_client = udp_client.SimpleUDPClient("127.0.0.1", 5005)
+    router_client = udp_client.SimpleUDPClient(router_ip, router_port)
+    print(f"Connexion établie avec le routeur OSC sur {router_ip}:{router_port}")
     
     # Créer un dispatcher pour gérer les messages OSC
     dispatcher = Dispatcher()

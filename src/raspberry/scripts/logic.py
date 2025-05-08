@@ -22,8 +22,10 @@ class OSCManager:
             self.config = json.load(f)
         
         # Client OSC unique pour le routeur central
-        self.router_client = udp_client.SimpleUDPClient("127.0.0.1", 5005)
-        print("Connexion établie avec le routeur OSC central sur 127.0.0.1:5005")
+        router_ip = self.config['osc']['router']['ip']
+        router_port = self.config['osc']['router']['port']
+        self.router_client = udp_client.SimpleUDPClient(router_ip, router_port)
+        print(f"Connexion établie avec le routeur OSC central sur {router_ip}:{router_port}")
         
     def send_to_puredata(self, address, value):
         """Envoie un message OSC au routeur pour PureData"""

@@ -112,10 +112,20 @@ def main():
         parent_dir = Path(__file__).resolve().parent.parent
         network_config_path = os.path.join(parent_dir, 'network.json')
         
-        # Utiliser la config depuis le fichier - routeur OSC a toujours la même adresse
-        router_ip = "127.0.0.1"
-        router_port = 5005
-        print(f"Utilisation de la configuration réseau du routeur OSC central: {router_ip}:{router_port}")
+        try:
+            # Lire la configuration depuis le fichier
+            with open(network_config_path, 'r') as f:
+                config = json.load(f)
+                
+            # Utiliser la configuration du router depuis le fichier
+            router_ip = config['osc']['router']['ip']
+            router_port = config['osc']['router']['port']
+            print(f"Utilisation de la configuration réseau du routeur OSC central: {router_ip}:{router_port}")
+        except Exception as e:
+            print(f"Erreur lors de la lecture de la configuration: {e}")
+            print("Utilisation des valeurs par défaut pour le routeur OSC")
+            router_ip = "127.0.0.1"
+            router_port = 5005
     else:
         # Utiliser les arguments ou les valeurs par défaut
         router_ip = args.router_ip

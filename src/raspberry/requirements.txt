@@ -6,7 +6,7 @@
 # - python3-libcamera (system dependency for picamera2)
 
 # Communication
-pyserial>=3.5        # Serial communication with Arduino
+pyserial==3.5        # Serial communication with Arduino
 python-osc>=1.8.1    # OSC communication
 
 # Image and video processing

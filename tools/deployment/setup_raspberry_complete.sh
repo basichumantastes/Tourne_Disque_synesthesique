@@ -30,6 +30,28 @@ sudo apt install -y libcamera-apps
 sudo apt install -y python3-opencv
 sudo apt install -y gstreamer1.0-plugins-base gstreamer1.0-plugins-good
 
+# Arduino Support
+echo "=== Installing Arduino CLI for Arduino integration ==="
+curl -fsSL https://raw.githubusercontent.com/arduino/arduino-cli/master/install.sh | BINDIR=~/.local/bin sh
+# Add Arduino CLI to PATH if not already in the path
+if ! grep -q "arduino-cli" ~/.bashrc; then
+    echo 'export PATH=$PATH:$HOME/.local/bin' >> ~/.bashrc
+    export PATH=$PATH:$HOME/.local/bin
+fi
+
+# Update Arduino CLI index
+echo "=== Updating Arduino CLI index ==="
+arduino-cli core update-index
+
+# Install Arduino AVR core (for Arduino Uno)
+echo "=== Installing Arduino AVR core ==="
+arduino-cli core install arduino:avr
+
+# Set permissions for serial port access
+echo "=== Setting up serial port permissions ==="
+sudo usermod -a -G dialout $USER
+sudo usermod -a -G tty $USER
+
 # Camera configuration for Raspberry Pi 5
 echo "=== Camera configuration for Raspberry Pi 5 ==="
 CONFIG_PATH="/boot/firmware/config.txt"
@@ -142,6 +164,7 @@ echo "- System dependencies installed"
 echo "- Camera support for Raspberry Pi 5 installed"
 echo "- Specific camera configuration established in /boot/firmware/config.txt"
 echo "- Folder structure prepared"
+echo "- Arduino CLI installed and configured"
 
 if [ -d "/home/blanchard/tourne_disque/services" ]; then
     echo "- Systemd services configured"
