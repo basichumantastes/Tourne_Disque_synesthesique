@@ -1,6 +1,6 @@
 {
     "raspberry": {
-        "ip": "192.168.0.124",
+        "ip": "192.168.0.114",
         "description": "Raspberry Pi unique qui gère la détection de couleur, le contrôle LED et la synthèse sonore"
     },
     "osc": {

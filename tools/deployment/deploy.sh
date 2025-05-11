@@ -2,7 +2,7 @@
 
 # Configuration
 REMOTE_USER="blanchard"
-REMOTE_HOST="192.168.0.124"
+REMOTE_HOST="192.168.0.114"
 REMOTE_PATH="/home/blanchard/tourne_disque"
 LOCAL_PATH="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 
