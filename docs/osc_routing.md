@@ -1,83 +1,83 @@
-# OSC Routing System Documentation
+# Documentation du Système de Routage OSC
 
-## Overview
+## Vue d'ensemble
 
-The OSC routing system of the "Synesthetic Turntable" uses a centralized hub-and-spoke architecture. All messages pass through a central router that distributes them in a targeted way to the appropriate modules according to a hierarchical routing table.
+Le système de routage OSC du "Tourne Disque Synesthésique" utilise une architecture centralisée de type hub-and-spoke. Tous les messages passent par un routeur central qui les distribue de manière ciblée aux modules appropriés selon une table de routage hiérarchique.
 
 ```
 ┌─────────────┐                   ┌──────────────┐                 ┌─────────────┐
 │             │  /vision/color/   │              │  /logic/color/  │             │
 │  Module A   │ ───────────────►  │ OSC Router   │ ───────────────►│  Module B   │
-│ (sender)    │                   │ (port 5005)  │                 │ (receiver)  │
+│ (émetteur)  │                   │ (port 5005)  │                 │ (récepteur) │
 │             │                   │              │                 │             │
 └─────────────┘                   └──────────────┘                 └─────────────┘
 ```
 
-## Addressing Convention
+## Convention d'adressage
 
-The system uses a standardized addressing convention that always includes the source module:
+Le système utilise une convention d'adressage standardisée qui inclut toujours le module source :
 
 ```
-/source_module/type/data
+/module_source/type/donnée
 ```
 
-For example:
-- `/vision/color/raw/rgb`: raw RGB data from the vision module
-- `/logic/color/rgb`: processed RGB data from the logic module
+Par exemple :
+- `/vision/color/raw/rgb` : données RGB brutes du module vision
+- `/logic/color/rgb` : données RGB traitées par le module logic
 
-This convention allows hierarchical routing based on the source module prefix, which greatly simplifies the system configuration.
+Cette convention permet un routage hiérarchique basé sur le préfixe du module source, ce qui simplifie grandement la configuration du système.
 
-## Hierarchical Routing
+## Routage hiérarchique
 
-The routing table is designed to work hierarchically with two types of entries:
+La table de routage est conçue pour fonctionner de manière hiérarchique avec deux types d'entrées :
 
-1. **Module prefixes** (ending with `/`): define where to route all messages from a module
-2. **Specific addresses**: allow creating exceptions for particular messages
+1. **Préfixes de module** (se terminant par `/`) : définissent où router tous les messages d'un module
+2. **Adresses spécifiques** : permettent de créer des exceptions pour des messages particuliers
 
 ```python
 self.routes = {
-    # Routing by source module
-    "/vision/": ["logic", "led"],     # All vision messages to logic and led
-    "/logic/": ["led", "puredata", "music_engine"],  # Logic messages to LED, PD and music engine
+    # Routage par module source
+    "/vision/": ["logic", "led"],     # Tous les messages vision vers logic et led
+    "/logic/": ["led", "puredata", "music_engine"],  # Messages logic vers LED, PD et music engine
     
-    # Specific cases that override general rules
-    "/vision/color/raw/hsv": ["logic"],  # HSV only to logic
+    # Cas spécifiques qui remplacent les règles générales
+    "/vision/color/raw/hsv": ["logic"],  # HSV uniquement vers logic
 }
 ```
 
-This hierarchical approach greatly simplifies the configuration and maintenance of the system.
+Cette approche hiérarchique simplifie grandement la configuration et la maintenance du système.
 
-## Routing Algorithm
+## Algorithme de routage
 
-1. The router receives an OSC message from a source module
-2. It first looks for an exact match in the routing table
-3. If no exact match is found, it searches for a matching prefix
-4. If no rule matches, the message is broadcast to all clients (default behavior)
+1. Le routeur reçoit un message OSC d'un module source
+2. Il recherche d'abord une correspondance exacte dans la table de routage
+3. Si aucune correspondance exacte n'est trouvée, il recherche un préfixe correspondant
+4. Si aucune règle ne correspond, le message est diffusé à tous les clients (comportement par défaut)
 
 ```python
-# Simplified excerpt from osc_router.py
+# Extrait simplifié de osc_router.py
 def handle_message(self, address, *args):
-    # Try exact match first
+    # Essayer d'abord une correspondance exacte
     if address in self.routes:
         destinations = self.routes[address]
-        # Send to destinations
+        # Envoyer aux destinations
         return
         
-    # Try prefix matching
+    # Essayer la correspondance de préfixe
     for prefix, destinations in self.routes.items():
         if prefix.endswith('/') and address.startswith(prefix):
-            # Send to destinations
+            # Envoyer aux destinations
             return
     
-    # No route found, broadcast to all
+    # Aucune route trouvée, diffuser à tous
     # ...
 ```
 
-## Module Declaration
+## Déclaration des modules
 
-### Configuration in network.json
+### Configuration dans network.json
 
-All modules are declared in the `network.json` file. This is the central configuration point for the entire system:
+Tous les modules sont déclarés dans le fichier `network.json`. C'est le point de configuration central pour l'ensemble du système :
 
 ```json
 {
@@ -102,80 +102,80 @@ All modules are declared in the `network.json` file. This is the central configu
 }
 ```
 
-## Data Flow
+## Flux de données
 
-### Color Data Communication
+### Communication des données de couleur
 
-1. `vision.py` captures colors and sends:
-   - `/vision/color/raw/rgb` (liste groupée) → routed to logic and led (rule `/vision/`)
-   - `/vision/color/raw/hsv` (liste groupée) → routed only to logic (specific rule)
-   - `/vision/color/raw/rgb/r`, `/vision/color/raw/rgb/g`, `/vision/color/raw/rgb/b` (valeurs individuelles) → routed to logic
-   - `/vision/color/raw/hsv/h`, `/vision/color/raw/hsv/s`, `/vision/color/raw/hsv/v` (valeurs individuelles) → routed to logic
+1. `vision.py` capture les couleurs et envoie :
+   - `/vision/color/raw/rgb` (liste groupée) → routé vers logic et led (règle `/vision/`)
+   - `/vision/color/raw/hsv` (liste groupée) → routé uniquement vers logic (règle spécifique)
+   - `/vision/color/raw/rgb/r`, `/vision/color/raw/rgb/g`, `/vision/color/raw/rgb/b` (valeurs individuelles) → routés vers logic
+   - `/vision/color/raw/hsv/h`, `/vision/color/raw/hsv/s`, `/vision/color/raw/hsv/v` (valeurs individuelles) → routés vers logic
 
-2. `logic.py` processes the values with Exponential Moving Average (EMA) and sends:
-   - `/logic/color/ema/r`, `/logic/color/ema/g`, `/logic/color/ema/b` (valeurs individuelles RGB) → routed to puredata only
-   - `/logic/color/ema/h`, `/logic/color/ema/s`, `/logic/color/ema/v` (valeurs individuelles HSV) → routed to puredata only
+2. `logic.py` traite les valeurs avec la moyenne mobile exponentielle (EMA) et envoie :
+   - `/logic/color/ema/r`, `/logic/color/ema/g`, `/logic/color/ema/b` (valeurs individuelles RGB) → routés vers puredata uniquement
+   - `/logic/color/ema/h`, `/logic/color/ema/s`, `/logic/color/ema/v` (valeurs individuelles HSV) → routés vers puredata uniquement
 
-3. Flux des données:
-   - Contrôleur LED: utilise les valeurs RGB brutes du module vision (`/vision/color/raw/rgb`)
-   - Pure Data: utilise les valeurs EMA calculées par le module logic (`/logic/color/ema/*`)
+3. Flux des données :
+   - Contrôleur LED : utilise les valeurs RGB brutes du module vision (`/vision/color/raw/rgb`)
+   - Pure Data : utilise les valeurs EMA calculées par le module logic (`/logic/color/ema/*`)
 
-## Standardized OSC Addresses
+## Adresses OSC standardisées
 
-| OSC Address | Description | Data Format |
+| Adresse OSC | Description | Format de données |
 |-------------|-------------|-------------------|
-| `/vision/color/raw/rgb` | Raw RGB color (grouped) | [r, g, b] (0-255) |
-| `/vision/color/raw/rgb/r` | Raw red component | r (0-255) |
-| `/vision/color/raw/rgb/g` | Raw green component | g (0-255) |
-| `/vision/color/raw/rgb/b` | Raw blue component | b (0-255) |
-| `/vision/color/raw/hsv` | Raw HSV color (grouped) | [h, s, v] (h: 0-360, s,v: 0-100) |
-| `/vision/color/raw/hsv/h` | Raw hue component | h (0-360) |
-| `/vision/color/raw/hsv/s` | Raw saturation component | s (0-100) |
-| `/vision/color/raw/hsv/v` | Raw value component | v (0-100) |
-| `/logic/color/ema/rgb` | EMA-processed RGB color (grouped) | [r, g, b] (0-255) |
-| `/logic/color/ema/r` | EMA-processed red component | r (0-255) |
-| `/logic/color/ema/g` | EMA-processed green component | g (0-255) |
-| `/logic/color/ema/b` | EMA-processed blue component | b (0-255) |
-| `/logic/color/ema/h` | EMA-processed hue | h (0-360) |
-| `/logic/color/ema/s` | EMA-processed saturation component | s (0-100) |
-| `/logic/color/ema/v` | EMA-processed value | v (0-100) |
-| `/arduino/motion/speed` | Rotation speed | [speed] (-1.0 to 1.0) |
-| `/arduino/motion/direction` | Rotation direction | [direction] (-1, 0, 1) |
-| `/logic/event` | Logic event | [type, *params] |
-| `/music_engine/event` | Music engine event | [type, *params] |
+| `/vision/color/raw/rgb` | Couleur RGB brute (groupée) | [r, g, b] (0-255) |
+| `/vision/color/raw/rgb/r` | Composante rouge brute | r (0-255) |
+| `/vision/color/raw/rgb/g` | Composante verte brute | g (0-255) |
+| `/vision/color/raw/rgb/b` | Composante bleue brute | b (0-255) |
+| `/vision/color/raw/hsv` | Couleur HSV brute (groupée) | [h, s, v] (h: 0-360, s,v: 0-100) |
+| `/vision/color/raw/hsv/h` | Composante teinte brute | h (0-360) |
+| `/vision/color/raw/hsv/s` | Composante saturation brute | s (0-100) |
+| `/vision/color/raw/hsv/v` | Composante valeur brute | v (0-100) |
+| `/logic/color/ema/rgb` | Couleur RGB traitée EMA (groupée) | [r, g, b] (0-255) |
+| `/logic/color/ema/r` | Composante rouge traitée EMA | r (0-255) |
+| `/logic/color/ema/g` | Composante verte traitée EMA | g (0-255) |
+| `/logic/color/ema/b` | Composante bleue traitée EMA | b (0-255) |
+| `/logic/color/ema/h` | Teinte traitée EMA | h (0-360) |
+| `/logic/color/ema/s` | Composante saturation traitée EMA | s (0-100) |
+| `/logic/color/ema/v` | Valeur traitée EMA | v (0-100) |
+| `/arduino/motion/speed` | Vitesse de rotation | [speed] (-1.0 à 1.0) |
+| `/arduino/motion/direction` | Direction de rotation | [direction] (-1, 0, 1) |
+| `/logic/event` | Événement logique | [type, *params] |
+| `/music_engine/event` | Événement du moteur musical | [type, *params] |
 
-## Best Practices
+## Bonnes pratiques
 
-1. **Source identification**: Always prefix OSC addresses with the name of the sending module
-2. **Consistent hierarchy**: Organize addresses in logical levels: `/source/category/subcategory/data`
-3. **Override sparingly**: Only use specific rules when really necessary
-4. **Document prefixes**: Ensure each prefix is documented with its destination
-5. **Centralized configuration**: All addresses and ports are defined in `network.json`
+1. **Identification de la source** : Toujours préfixer les adresses OSC avec le nom du module émetteur
+2. **Hiérarchie cohérente** : Organiser les adresses en niveaux logiques : `/source/catégorie/sous-catégorie/donnée`
+3. **Utiliser les surcharges avec parcimonie** : N'utiliser des règles spécifiques que lorsque c'est vraiment nécessaire
+4. **Documenter les préfixes** : S'assurer que chaque préfixe est documenté avec sa destination
+5. **Configuration centralisée** : Toutes les adresses et ports sont définis dans `network.json`
 
-## Benefits of Hierarchical Routing
+## Avantages du routage hiérarchique
 
-- **Simplicity**: More concise and easier to understand configuration
-- **Maintainability**: Adding new message types doesn't require modifying the routing table
-- **Flexibility**: Ability to create exceptions for specific cases
-- **Extensibility**: Makes it easier to add new modules to the system
+- **Simplicité** : Configuration plus concise et plus facile à comprendre
+- **Maintenabilité** : L'ajout de nouveaux types de messages ne nécessite pas de modifier la table de routage
+- **Flexibilité** : Possibilité de créer des exceptions pour des cas spécifiques
+- **Extensibilité** : Facilite l'ajout de nouveaux modules au système
 
-## Debugging
+## Débogage
 
-If problems occur:
-- Observe the router logs that display the routing mode used for each message
-- Check if a message uses an exact match, a prefix, or the default behavior
-- Examine messages broadcast to all (which did not find a matching route)
+En cas de problèmes :
+- Observer les logs du routeur qui affichent le mode de routage utilisé pour chaque message
+- Vérifier si un message utilise une correspondance exacte, un préfixe ou le comportement par défaut
+- Examiner les messages diffusés à tous (qui n'ont pas trouvé de route correspondante)
 
-## How to implement this approach in a new module
+## Comment implémenter cette approche dans un nouveau module
 
-For a module to communicate with this routing system, it must:
+Pour qu'un module communique avec ce système de routage, il doit :
 
-1. **Be defined** in the `network.json` file with its IP address and port
-2. **Prefix its messages** with its identifier (e.g., `/my_module/action/data`)
-3. **Listen** on its own port to receive messages intended for it
-4. **Be added** to the OSC router's routing table with a prefix (e.g., `/my_module/: ["recipient1", "recipient2"]`)
+1. **Être défini** dans le fichier `network.json` avec son adresse IP et son port
+2. **Préfixer ses messages** avec son identifiant (par exemple, `/mon_module/action/données`)
+3. **Écouter** sur son propre port pour recevoir les messages qui lui sont destinés
+4. **Être ajouté** à la table de routage du routeur OSC avec un préfixe (par exemple, `/mon_module/: ["destinataire1", "destinataire2"]`)
 
-Here's an implementation example for a generic module:
+Voici un exemple d'implémentation pour un module générique :
 
 ```python
 #!/usr/bin/env python3
@@ -194,57 +194,59 @@ def load_network_config():
 
 class MyModule:
     def __init__(self, module_name="my_module"):
-        # Load network configuration
+        # Chargement de la configuration réseau
         config = load_network_config()
         self.module_name = module_name
         
-        # Check that the module is configured in network.json
+        # Vérifier que le module est configuré dans network.json
         if module_name not in config['osc']:
-            raise ValueError(f"Module {module_name} not configured in network.json")
+            raise ValueError(f"Module {module_name} non configuré dans network.json")
             
-        # Get module configuration
+        # Obtenir la configuration du module
         module_config = config['osc'][module_name]
         self.local_ip = module_config['ip']
         self.local_port = module_config['port']
         
-        # Client to send messages to the router
+        # Client pour envoyer des messages au routeur
         self.client = udp_client.SimpleUDPClient("127.0.0.1", 5005)
         
-        # Dispatcher to receive messages
+        # Dispatcher pour recevoir des messages
         self.dispatcher = dispatcher.Dispatcher()
         self.setup_handlers()
         
-        # OSC server to listen for messages
+        # Serveur OSC pour écouter les messages
         self.server = osc_server.ThreadingOSCUDPServer(
             (self.local_ip, self.local_port), self.dispatcher)
     
     def setup_handlers(self):
-        """Configure handlers for incoming messages"""
-        # For a generic module, we can configure handlers for all
-        # possible messages that the module can receive from any source
+        """Configurer les gestionnaires pour les messages entrants"""
+        # Pour un module générique, nous pouvons configurer des gestionnaires pour tous
+        # les messages possibles que le module peut recevoir de n'importe quelle source
         self.dispatcher.set_default_handler(self.handle_all_messages)
         
     def handle_all_messages(self, address, *args):
-        print(f"Message received: {address} {args}")
+        print(f"Message reçu : {address} {args}")
         
-        # Optional extraction of source module for differentiated processing
+        # Extraction optionnelle du module source pour un traitement différencié
         parts = address.split('/')
         if len(parts) > 1:
             source_module = parts[1]
-            print(f"  ↳ Source: {source_module}")
+            print(f"  ↳ Source : {source_module}")
         
     def send_message(self, type_msg, *args):
-        """Send an OSC message with source module prefix"""
+        """Envoyer un message OSC avec préfixe du module source"""
         address = f"/{self.module_name}/{type_msg}"
         self.client.send_message(address, args)
         
     def run(self):
-        print(f"Module {self.module_name} started on {self.local_ip}:{self.local_port}")
+        print(f"Module {self.module_name} démarré sur {self.local_ip}:{self.local_port}")
         self.server.serve_forever()
 
-# Example usage
+# Exemple d'utilisation
 if __name__ == "__main__":
     module = MyModule("my_module")
-    module.send_message("status/active", True)  # Sends /my_module/status/active
+    module.send_message("status/active", True)  # Envoie /my_module/status/active
     module.run()
 ```
+
+*Documentation mise à jour le 12 mai 2025*
