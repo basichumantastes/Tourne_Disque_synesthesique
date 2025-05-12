@@ -21,6 +21,7 @@ ENV/
 *.sqlite3
 
 # IDEs et éditeurs
+.github/
 .vscode/
 .idea/
 *.swp
