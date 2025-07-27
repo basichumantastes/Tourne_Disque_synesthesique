@@ -4,6 +4,7 @@ Arduino Serial Communication Service
 
 Ce script gère la communication série avec l'Arduino et transmet les données
 au système via OSC. Il fait partie du projet Tourne Disque Synesthésique.
+L'Arduino gère le servo balancier et reçoit les couleurs RGB via série USB.
 """
 
 import os
@@ -13,8 +14,10 @@ import serial
 import json
 import logging
 import re
+import threading
+import colorsys
 from pathlib import Path
-from pythonosc import udp_client
+from pythonosc import udp_client, dispatcher, osc_server
 
 # Configuration du logging
 logging.basicConfig(
@@ -27,25 +30,40 @@ logging.basicConfig(
 )
 logger = logging.getLogger("arduino_serial")
 
-class ArduinoSerialReader:
-    """Classe pour gérer la lecture série depuis l'Arduino"""
+class ArduinoSerialController:
+    """Classe pour gérer la communication série avec l'Arduino (servo + LED)"""
     
-    def __init__(self, port='/dev/ttyACM0', baudrate=9600, osc_ip='127.0.0.1', osc_port=5005):
+    def __init__(self, port='/dev/ttyACM0', baudrate=9600):
         self.port = port
         self.baudrate = baudrate
-        self.osc_ip = osc_ip
-        self.osc_port = osc_port
         self.serial = None
         self.osc_client = None
         self.connected = False
         
+        # Configuration OSC (sera chargée depuis network.json)
+        self.osc_ip = None
+        self.osc_port = None
+        
         # Statut actuel du système
-        self.motor_speed = 0
         self.is_balancier_mode = False
         self.current_angle = 0
+        self.current_rgb = [255, 0, 0]  # RGB actuel
+        
+        # Buffer pour reconstituer RGB depuis les messages individuels
+        self.rgb_components = {'r': 0, 'g': 0, 'b': 0}
+        self.rgb_updated = {'r': False, 'g': False, 'b': False}
+        
+        # Configuration OSC
+        self.dispatcher = None
+        self.server = None
+        
+        # Paramètres de boost visuel (ajustables)
+        self.saturation_boost = 1.5  # Multiplier la saturation (1.0 = normal, 2.0 = double)
+        self.contrast_boost = 1.3    # Augmenter le contraste (1.0 = normal, 1.5 = +50%)
+        self.brightness_boost = 1.1  # Léger boost de luminosité (1.0 = normal)
         
     def setup(self):
-        """Configure la connexion série et le client OSC"""
+        """Configure la connexion série, le client OSC et le serveur OSC"""
         try:
             # Charger la configuration réseau
             parent_dir = Path(__file__).resolve().parent.parent
@@ -57,14 +75,172 @@ class ArduinoSerialReader:
                 self.osc_ip = config['osc']['router']['ip']
                 self.osc_port = config['osc']['router']['port']
             
-            # Configurer le client OSC
+            # Configurer le client OSC pour envoyer des messages
             self.osc_client = udp_client.SimpleUDPClient(self.osc_ip, self.osc_port)
             logger.info(f"Client OSC configuré vers {self.osc_ip}:{self.osc_port}")
+            
+            # Configurer le serveur OSC pour recevoir les couleurs RGB
+            self.setup_osc_server(config)
             
             return True
             
         except Exception as e:
             logger.error(f"Erreur lors de la configuration: {e}")
+            return False
+    
+    def setup_osc_server(self, config):
+        """Configure le serveur OSC pour recevoir les données RGB"""
+        self.dispatcher = dispatcher.Dispatcher()
+        
+        # Handlers pour recevoir les couleurs RGB brutes directement de vision.py
+        self.dispatcher.map("/vision/color/raw/rgb/r", self.handle_vision_rgb_r)
+        self.dispatcher.map("/vision/color/raw/rgb/g", self.handle_vision_rgb_g) 
+        self.dispatcher.map("/vision/color/raw/rgb/b", self.handle_vision_rgb_b)
+        
+        # Handler pour recevoir les couleurs RGB lissées de logic.py (DÉSACTIVÉ pour éviter conflit)
+        # self.dispatcher.map("/logic/color/smooth/rgb", self.handle_rgb_color)
+        
+        # Démarrer le serveur OSC
+        arduino_config = config['osc']['arduino_serial']
+        self.server = osc_server.ThreadingOSCUDPServer(
+            (arduino_config['ip'], arduino_config['port']),
+            self.dispatcher
+        )
+        
+        # Démarrer le serveur dans un thread séparé
+        server_thread = threading.Thread(target=self.server.serve_forever)
+        server_thread.daemon = True
+        server_thread.start()
+        
+        logger.info(f"Serveur OSC démarré sur {arduino_config['ip']}:{arduino_config['port']}")
+    
+    def boost_color_hsv(self, r, g, b):
+        """Boost le contraste et la saturation via conversion HSV"""
+        try:
+            # Normaliser RGB (0-1)
+            r_norm = r / 255.0
+            g_norm = g / 255.0  
+            b_norm = b / 255.0
+            
+            # Convertir RGB vers HSV
+            h, s, v = colorsys.rgb_to_hsv(r_norm, g_norm, b_norm)
+            
+            # Appliquer le boost de saturation
+            s_boosted = min(1.0, s * self.saturation_boost)
+            
+            # Appliquer le boost de luminosité/contraste
+            v_boosted = min(1.0, v * self.brightness_boost)
+            
+            # Appliquer le contraste (étendre les valeurs autour de 0.5)
+            v_contrasted = ((v_boosted - 0.5) * self.contrast_boost) + 0.5
+            v_contrasted = max(0.0, min(1.0, v_contrasted))
+            
+            # Reconvertir HSV vers RGB
+            r_boost, g_boost, b_boost = colorsys.hsv_to_rgb(h, s_boosted, v_contrasted)
+            
+            # Convertir vers entiers 0-255
+            r_final = max(0, min(255, int(r_boost * 255)))
+            g_final = max(0, min(255, int(g_boost * 255)))
+            b_final = max(0, min(255, int(b_boost * 255)))
+            
+            return r_final, g_final, b_final
+            
+        except Exception as e:
+            logger.error(f"Erreur lors du boost couleur HSV: {e}")
+            # En cas d'erreur, retourner les valeurs originales
+            return r, g, b
+    
+    def handle_vision_rgb_r(self, address, value):
+        """Traite la composante R reçue directement de vision.py"""
+        self.handle_vision_rgb_component('r', value)
+    
+    def handle_vision_rgb_g(self, address, value):
+        """Traite la composante G reçue directement de vision.py"""
+        self.handle_vision_rgb_component('g', value)
+    
+    def handle_vision_rgb_b(self, address, value):
+        """Traite la composante B reçue directement de vision.py"""
+        self.handle_vision_rgb_component('b', value)
+    
+    def handle_vision_rgb_component(self, component, value):
+        """Traite une composante RGB individuelle et reconstitue le RGB complet"""
+        try:
+            # Convertir et contraindre la valeur
+            rgb_value = max(0, min(255, int(value)))
+            
+            # Mettre à jour le buffer de cette composante
+            self.rgb_components[component] = rgb_value
+            self.rgb_updated[component] = True
+            
+            # Si toutes les composantes ont été mises à jour, envoyer à l'Arduino
+            if all(self.rgb_updated.values()):
+                r = self.rgb_components['r']
+                g = self.rgb_components['g'] 
+                b = self.rgb_components['b']
+                
+                # Appliquer le boost de contraste et saturation via HSV
+                r_boosted, g_boosted, b_boosted = self.boost_color_hsv(r, g, b)
+                
+                # Envoyer à l'Arduino en un seul message RGB complet
+                self.send_rgb_complete_to_arduino(r_boosted, g_boosted, b_boosted)
+                self.current_rgb = [r_boosted, g_boosted, b_boosted]
+                
+                # Reset des flags de mise à jour
+                self.rgb_updated = {'r': False, 'g': False, 'b': False}
+                
+        except Exception as e:
+            logger.error(f"Erreur lors du traitement RGB vision: {e}")
+    
+    def send_rgb_complete_to_arduino(self, r, g, b):
+        """Envoie les valeurs RGB complètes à l'Arduino en un seul message"""
+        if not self.connected or not self.serial:
+            logger.warning("Impossible d'envoyer RGB: Arduino non connecté")
+            return False
+            
+        try:
+            # Format: "rgb,255,128,64\n" (un seul message pour éviter le clignotement)
+            command = f"rgb,{r},{g},{b}\n"
+            self.serial.write(command.encode())
+            
+            # Envoyer aussi via OSC vers le dev pour monitoring
+            if self.osc_client:
+                self.osc_client.send_message("/arduino/serial/rgb", [r, g, b])
+            
+            return True
+        except Exception as e:
+            logger.error(f"Erreur lors de l'envoi RGB complet: {e}")
+            self.connected = False
+            return False
+    
+    def handle_rgb_color(self, address, r, g, b):
+        """Traite les couleurs RGB lissées reçues de logic.py (fallback)"""
+        try:
+            # Convertir en entiers et contraindre
+            r = max(0, min(255, int(r)))
+            g = max(0, min(255, int(g)))
+            b = max(0, min(255, int(b)))
+            
+            self.current_rgb = [r, g, b]
+            
+            # Envoyer à l'Arduino via série (message complet)
+            self.send_rgb_complete_to_arduino(r, g, b)
+            
+        except Exception as e:
+            logger.error(f"Erreur lors du traitement RGB lissé: {e}")
+    
+    def send_command(self, command):
+        """Envoie une commande à l'Arduino"""
+        if not self.connected or not self.serial:
+            logger.error("Impossible d'envoyer la commande: non connecté")
+            return False
+            
+        try:
+            self.serial.write(f"{command}\n".encode())
+            logger.info(f"Commande envoyée: {command}")
+            return True
+        except Exception as e:
+            logger.error(f"Erreur lors de l'envoi de commande: {e}")
+            self.connected = False
             return False
     
     def connect(self):
@@ -108,12 +284,8 @@ class ArduinoSerialReader:
             self.connected = False
             return False
     
-    def set_motor_speed(self, speed):
-        """Change la vitesse du moteur"""
-        return self.send_command(f"v{int(speed)}")
-    
     def toggle_balancier(self):
-        """Active/désactive le mode balancier"""
+        """Active/désactive le mode balancier (si cette fonctionnalité existe encore)"""
         return self.send_command("b")
     
     def read(self):
@@ -125,7 +297,6 @@ class ArduinoSerialReader:
             if self.serial.in_waiting:
                 line = self.serial.readline().decode('utf-8', errors='replace').strip()
                 if line:
-                    logger.debug(f"Reçu: {line}")
                     self.process_data(line)
             return True
         except serial.SerialException as e:
@@ -134,55 +305,16 @@ class ArduinoSerialReader:
             return False
     
     def process_data(self, data):
-        """Traite les données reçues de l'Arduino"""
+        """Traite les données reçues de l'Arduino (servo et LED)"""
         try:
-            # Vitesse réglée
-            speed_match = re.search(r"Vitesse réglée à :\s*(-?\d+)", data)
-            if speed_match:
-                speed = int(speed_match.group(1))
-                self.motor_speed = speed
-                logger.info(f"Vitesse du moteur: {speed}")
-                self.osc_client.send_message("/arduino/motor/speed", speed)
+            # Arduino ready
+            if "Arduino servo + LED ready" in data:
+                logger.info("Arduino prêt (servo + LED)")
                 return
                 
-            # Nouvelle direction appliquée
-            dir_match = re.search(r"Nouvelle direction appliquée, vitesse réglée à :\s*(-?\d+)", data)
-            if dir_match:
-                speed = int(dir_match.group(1))
-                self.motor_speed = speed
-                logger.info(f"Nouvelle direction du moteur: {speed}")
-                self.osc_client.send_message("/arduino/motor/speed", speed)
+            # RGB mis à jour
+            if "RGB updated:" in data:
                 return
-                
-            # Mode balancier activé
-            if "Mode balancier du servo activé" in data:
-                self.is_balancier_mode = True
-                logger.info("Mode balancier activé")
-                self.osc_client.send_message("/arduino/servo/mode", 1)
-                return
-                
-            # Servo déplacé
-            servo_match = re.search(r"Servo déplacé à :\s*(\d+)", data)
-            if servo_match:
-                angle = int(servo_match.group(1))
-                self.current_angle = angle
-                logger.info(f"Angle du servo: {angle}")
-                self.osc_client.send_message("/arduino/servo/angle", angle)
-                return
-                
-            # Arrêt moteur
-            if "Moteur arrêté" in data:
-                self.motor_speed = 0
-                logger.info("Moteur arrêté")
-                self.osc_client.send_message("/arduino/motor/speed", 0)
-                return
-                
-            # Commandes diverses (logging uniquement)
-            if "Arrêt progressif demandé" in data:
-                logger.info("Arrêt progressif demandé")
-                
-            if "Changement de direction demandé" in data:
-                logger.info("Changement de direction demandé")
                 
         except Exception as e:
             logger.error(f"Erreur lors du traitement des données: {e}")
@@ -211,6 +343,10 @@ class ArduinoSerialReader:
     
     def close(self):
         """Ferme proprement les connexions"""
+        if self.server:
+            self.server.shutdown()
+            logger.info("Serveur OSC fermé")
+            
         if self.serial and self.serial.is_open:
             self.serial.close()
             logger.info("Connexion série fermée")
@@ -218,8 +354,8 @@ class ArduinoSerialReader:
 
 # Point d'entrée principal
 def main():
-    logger.info("=== Démarrage du service de communication Arduino ===")
-    arduino = ArduinoSerialReader()
+    logger.info("=== Démarrage du service de communication Arduino (servo + LED) ===")
+    arduino = ArduinoSerialController()
     
     try:
         arduino.run()

@@ -21,7 +21,7 @@
             "port": 9003
         },
         "dev": {
-            "ip": "192.168.0.123",
+            "ip": "192.168.0.102",
             "port": 9010,
             "description": "Mac local pour le développement du patch Pure Data"
         },
@@ -29,6 +29,11 @@
             "ip": "127.0.0.1",
             "port": 5005,
             "description": "OSC Router central qui gère la distribution des messages entre les modules"
+        },
+        "arduino_serial": {
+            "ip": "127.0.0.1",
+            "port": 9004,
+            "description": "Service de communication avec Arduino (servo + LED)"
         }
     }
 }

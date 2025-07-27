@@ -34,6 +34,10 @@ class OSCManager:
     def send_to_leds(self, address, values):
         """Envoie un message OSC au routeur pour le contrôleur LED"""
         self.router_client.send_message(address, values)
+    
+    def send_to_arduino(self, address, values):
+        """Envoie un message OSC au routeur pour l'Arduino"""
+        self.router_client.send_message(address, values)
 
 class ColorProcessor:
     def __init__(self):
@@ -113,6 +117,13 @@ class ColorProcessor:
         # Envoi à Pure Data pour cette composante spécifique
         smoothed_value = int(self.rgb_ema[component])
         self.osc.send_to_puredata(f"/logic/color/ema/{component}", smoothed_value)
+        
+        # Vérifier si toutes les composantes RGB sont initialisées et envoyer à l'Arduino
+        if all(v is not None for v in self.rgb_ema.values()):
+            r = int(self.rgb_ema['r'])
+            g = int(self.rgb_ema['g'])
+            b = int(self.rgb_ema['b'])
+            self.osc.send_to_arduino("/logic/color/smooth/rgb", [r, g, b])
         
         # NOTE: On n'envoie plus les valeurs EMA au contrôleur LED
         # Le contrôleur LED reçoit directement les valeurs brutes du module vision

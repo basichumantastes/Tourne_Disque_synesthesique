@@ -63,11 +63,11 @@ class ColorDetector:
         criteria = (cv2.TERM_CRITERIA_EPS + cv2.TERM_CRITERIA_MAX_ITER, 5, 1.0)
         _, _, palette = cv2.kmeans(pixels, 1, None, criteria, 1, cv2.KMEANS_RANDOM_CENTERS)
         
-        # Handle BGR vs RGB based on camera source
-        if self.using_picamera2:
-            return palette[0]  # Already in RGB format
-        else:
-            return palette[0][::-1]  # BGR to RGB conversion
+        # Le problème : kmeans traite toujours en BGR même avec picamera2
+        # Donc on inverse TOUJOURS pour avoir RGB
+        color = palette[0][::-1]  # BGR to RGB conversion
+            
+        return color
 
     def get_hsv(self, rgb):
         """Convertit RGB en HSV"""
@@ -143,6 +143,9 @@ def main():
                 # Conversion en entiers
                 r, g, b = map(int, rgb)
                 h, s, v = map(int, hsv)
+                
+                # Debug: afficher les valeurs RGB détectées
+                print(f"RGB détecté: R={r}, G={g}, B={b}")
                 
                 # Envoi individuel des composantes RGB
                 osc_client.send_message("/vision/color/raw/rgb/r", r)
