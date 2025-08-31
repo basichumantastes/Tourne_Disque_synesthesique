@@ -21,7 +21,7 @@
             "port": 9003
         },
         "dev": {
-            "ip": "192.168.0.102",
+            "ip": "192.168.0.107",
             "port": 9010,
             "description": "Mac local pour le développement du patch Pure Data"
         },

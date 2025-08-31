@@ -85,12 +85,7 @@ The deployment script:
 ### Service Structure
 
 The project is divided into several systemd services that work together:
-- `vision.service`: Color analysis via camera
-- `led_controller.service`: LED ring control
-- `osc_router.service`: Communication between components
-- `logic.service`: Main application logic
-- `music_engine.service`: Sound generation
-- `puredata.service`: Audio engine
+
 
 ## License
 
