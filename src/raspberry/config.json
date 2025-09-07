@@ -1,0 +1,7 @@
+{
+  "color_processing": {
+    "saturation_boost": 1.8,
+    "contrast_boost": 1.3,
+    "brightness_boost": 0.5
+  }
+}

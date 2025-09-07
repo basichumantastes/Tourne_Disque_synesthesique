@@ -127,15 +127,58 @@ if [ "$ARDUINO_UPLOAD" -eq 1 ]; then
     sshpass -p "${SSH_PASSWORD}" ssh ${SSH_OPTS} ${REMOTE_USER}@${REMOTE_HOST} "
         cd ${REMOTE_PATH}/src/arduino/platformio
         
+        # Install arduino-cli if not present
+        if ! command -v arduino-cli &> /dev/null; then
+            echo 'Installing arduino-cli...'
+            curl -fsSL https://raw.githubusercontent.com/arduino/arduino-cli/master/install.sh | sh
+            sudo mv bin/arduino-cli /usr/local/bin/
+            rm -rf bin
+            arduino-cli config init
+            arduino-cli core update-index
+            arduino-cli core install arduino:avr
+            
+            # Install required libraries
+            arduino-cli lib install FastLED
+        fi
+        
+        # Stop arduino_serial service temporarily to free the port
+        sudo systemctl stop arduino_serial.service
+        
+        # Wait a bit for the port to be freed
+        sleep 2
+        
         # Check if Arduino is connected
-        if [ -e /dev/ttyACM0 ]; then
+        if [ -e /dev/ttyUSB0 ]; then
+            # Create a temporary sketch directory and copy our code
+            mkdir -p /tmp/arduino_sketch
+            cp src/main.ino /tmp/arduino_sketch/arduino_sketch.ino
+            cd /tmp/arduino_sketch
+            
             # Compile and upload Arduino code
             arduino-cli compile --fqbn arduino:avr:uno .
+            arduino-cli upload -p /dev/ttyUSB0 --fqbn arduino:avr:uno .
+            echo 'Arduino code uploaded successfully to /dev/ttyUSB0'
+            
+            # Clean up
+            rm -rf /tmp/arduino_sketch
+        elif [ -e /dev/ttyACM0 ]; then
+            # Fallback to ttyACM0
+            mkdir -p /tmp/arduino_sketch
+            cp src/main.ino /tmp/arduino_sketch/arduino_sketch.ino
+            cd /tmp/arduino_sketch
+            
+            arduino-cli compile --fqbn arduino:avr:uno .
             arduino-cli upload -p /dev/ttyACM0 --fqbn arduino:avr:uno .
-            echo 'Arduino code uploaded successfully'
+            echo 'Arduino code uploaded successfully to /dev/ttyACM0'
+            
+            # Clean up
+            rm -rf /tmp/arduino_sketch
         else
-            echo 'Arduino not detected at /dev/ttyACM0, skipping upload'
+            echo 'Arduino not detected at /dev/ttyUSB0 or /dev/ttyACM0, skipping upload'
         fi
+        
+        # Restart arduino_serial service
+        sudo systemctl start arduino_serial.service
     "
 else
     log "Skipping Arduino code upload as requested"

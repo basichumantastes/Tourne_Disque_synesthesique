@@ -33,7 +33,7 @@ logger = logging.getLogger("arduino_serial")
 class ArduinoSerialController:
     """Classe pour gérer la communication série avec l'Arduino (servo + LED)"""
     
-    def __init__(self, port='/dev/ttyACM0', baudrate=9600):
+    def __init__(self, port='/dev/ttyUSB0', baudrate=9600):
         self.port = port
         self.baudrate = baudrate
         self.serial = None
@@ -57,10 +57,43 @@ class ArduinoSerialController:
         self.dispatcher = None
         self.server = None
         
-        # Paramètres de boost visuel (ajustables)
-        self.saturation_boost = 1.5  # Multiplier la saturation (1.0 = normal, 2.0 = double)
-        self.contrast_boost = 1.3    # Augmenter le contraste (1.0 = normal, 1.5 = +50%)
-        self.brightness_boost = 1.1  # Léger boost de luminosité (1.0 = normal)
+        # Paramètres de boost visuel (chargés depuis config.json)
+        self.saturation_boost = 1.2   # Valeur par défaut
+        self.contrast_boost = 1.1     # Valeur par défaut  
+        self.brightness_boost = 1.1   # Valeur par défaut
+        
+        # Charger la configuration depuis config.json
+        self.load_config()
+        
+    def load_config(self):
+        """Charge la configuration depuis le fichier config.json"""
+        try:
+            parent_dir = Path(__file__).resolve().parent.parent
+            config_path = os.path.join(parent_dir, 'config.json')
+            
+            with open(config_path, 'r') as f:
+                config = json.load(f)
+                
+            # Charger les paramètres de traitement des couleurs
+            color_config = config.get('color_processing', {})
+            self.saturation_boost = color_config.get('saturation_boost', 1.2)
+            self.contrast_boost = color_config.get('contrast_boost', 1.1)
+            self.brightness_boost = color_config.get('brightness_boost', 1.1)
+            
+            logger.info(f"Configuration chargée: saturation={self.saturation_boost}, "
+                       f"contraste={self.contrast_boost}, luminosité={self.brightness_boost}")
+                       
+        except FileNotFoundError:
+            logger.warning("Fichier config.json non trouvé, utilisation des valeurs par défaut")
+        except json.JSONDecodeError as e:
+            logger.error(f"Erreur de format JSON dans config.json: {e}")
+        except Exception as e:
+            logger.error(f"Erreur lors du chargement de la configuration: {e}")
+    
+    def reload_config(self):
+        """Recharge la configuration depuis config.json (utile pour ajustements en temps réel)"""
+        logger.info("Rechargement de la configuration...")
+        self.load_config()
         
     def setup(self):
         """Configure la connexion série, le client OSC et le serveur OSC"""
