@@ -97,6 +97,17 @@ sshpass -p "${SSH_PASSWORD}" rsync -avz --exclude '.git/' \
            "${LOCAL_PATH}/src/raspberry/" \
            "${REMOTE_USER}@${REMOTE_HOST}:${REMOTE_PATH}/"
 
+# Also copy Arduino files if Arduino upload is requested
+if [ "$ARDUINO_UPLOAD" -eq 1 ]; then
+    log "Copying Arduino source files..."
+    sshpass -p "${SSH_PASSWORD}" rsync -avz --exclude '.git/' \
+               --exclude '.pio/' \
+               --exclude '.vscode/' \
+               -e "ssh ${SSH_OPTS}" \
+               "${LOCAL_PATH}/src/arduino/" \
+               "${REMOTE_USER}@${REMOTE_HOST}:${REMOTE_PATH}/src/arduino/"
+fi
+
 if [ $? -eq 0 ]; then
     log "Files deployed successfully"
 else
@@ -141,6 +152,9 @@ if [ "$ARDUINO_UPLOAD" -eq 1 ]; then
             arduino-cli lib install FastLED
         fi
         
+        # Ensure Servo library is available (it's normally built-in but let's be sure)
+        arduino-cli lib install Servo || echo 'Servo library might be built-in'
+        
         # Stop arduino_serial service temporarily to free the port
         sudo systemctl stop arduino_serial.service
         
@@ -151,7 +165,7 @@ if [ "$ARDUINO_UPLOAD" -eq 1 ]; then
         if [ -e /dev/ttyUSB0 ]; then
             # Create a temporary sketch directory and copy our code
             mkdir -p /tmp/arduino_sketch
-            cp src/main.ino /tmp/arduino_sketch/arduino_sketch.ino
+            cp ${REMOTE_PATH}/src/arduino/platformio/src/main.ino /tmp/arduino_sketch/arduino_sketch.ino
             cd /tmp/arduino_sketch
             
             # Compile and upload Arduino code
@@ -164,7 +178,7 @@ if [ "$ARDUINO_UPLOAD" -eq 1 ]; then
         elif [ -e /dev/ttyACM0 ]; then
             # Fallback to ttyACM0
             mkdir -p /tmp/arduino_sketch
-            cp src/main.ino /tmp/arduino_sketch/arduino_sketch.ino
+            cp ${REMOTE_PATH}/src/arduino/platformio/src/main.ino /tmp/arduino_sketch/arduino_sketch.ino
             cd /tmp/arduino_sketch
             
             arduino-cli compile --fqbn arduino:avr:uno .

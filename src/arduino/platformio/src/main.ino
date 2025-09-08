@@ -3,8 +3,9 @@
 
   Fonctionnalités:
   - Oscillation d'un servo entre minPulse et maxPulse.
-  - Avancement automatique d'un step toutes les minutes (60 secondes).
-  - LED WS2812 (1 pixel) mise à jour via commandes série simples.
+  - Avancement automatique d'un step toutes les 30 secondes.
+  - LED WS2812 (1 pixel) avec séquence rainbow d'accueil de 5 secondes.
+  - Mise à jour LED via commandes série simples.
 
   Commandes série (terminer par \n ou \r):
     rgb,R,G,B        -> définit couleur immédiatement (ex: rgb,120,40,255)
@@ -19,8 +20,7 @@
 const int servoPin = 9;
 int pulseWidth = 500;            // µs (position actuelle)
 const int minPulse = 500;
-const int maxPulse = 2500;
-const int step = 10;
+const int maxPulse = 2350;
 int direction = 1;
 Servo canvasServo;
 int lastWrittenPulse = -1;       // pour n'écrire que si changement
@@ -30,9 +30,14 @@ int lastWrittenPulse = -1;       // pour n'écrire que si changement
 #define NUM_LEDS 1
 CRGB leds[NUM_LEDS];
 
+// Variables pour séquence d'accueil rainbow
+bool rainbowSequence = true;
+unsigned long rainbowStart = 0;
+const unsigned long rainbowDuration = 5000; // 5 secondes
+
 // Configuration communication série
 bool newRGBReceived = false;
-uint8_t rgbBuffer[3] = {255, 0, 0}; // Rouge par défaut
+uint8_t rgbBuffer[3] = {0, 0, 255}; // Bleu par défaut
 bool rgbComponentsReceived[3] = {false, false, false}; // R, G, B reçus
 
 // Buffer de réception série non bloquant
@@ -41,7 +46,8 @@ static uint8_t serialIndex = 0;
 
 // Timing - servo avance d'un step toutes les minutes
 unsigned long lastServoUpdate = 0;
-const unsigned long stepInterval = 60000;   // 60 secondes = 1 minute
+const unsigned long stepInterval = 30UL * 1000UL;   // 30 secondes
+const int step = 10;  // Steps fins de 10µs
 
 void setup() {
   // Configuration série
@@ -78,13 +84,35 @@ void loop() {
   // Gestion du servo
   updateServo(now);
   
-  // Mise à jour LED si nouvelles données RGB reçues
-  updateLED();
+  // Gestion de la séquence rainbow d'accueil
+  if (rainbowSequence) {
+    if (rainbowStart == 0) {
+      rainbowStart = now; // Initialiser le début de la séquence
+    }
+    
+    unsigned long rainbowElapsed = now - rainbowStart;
+    if (rainbowElapsed < rainbowDuration) {
+      // Calculer la couleur rainbow en fonction du temps
+      uint8_t hue = (rainbowElapsed * 255) / rainbowDuration;
+      leds[0] = CHSV(hue, 255, 255);
+      FastLED.show();
+    } else {
+      // Fin de la séquence rainbow, passer à la couleur par défaut
+      rainbowSequence = false;
+      leds[0] = CRGB(rgbBuffer[0], rgbBuffer[1], rgbBuffer[2]);
+      FastLED.show();
+    }
+  } else {
+    // Mise à jour LED si nouvelles données RGB reçues (après la séquence)
+    updateLED();
+  }
 }
 
 void updateServo(unsigned long now) {
-  // Avancement automatique toutes les minutes
-  if (now - lastServoUpdate >= stepInterval) {
+  // Avancement automatique toutes les minutes - gestion débordement millis()
+  unsigned long elapsed = (unsigned long)(now - lastServoUpdate);
+  
+  if (elapsed >= stepInterval) {
     lastServoUpdate = now;
     
     // Calcul nouvelle position
@@ -102,9 +130,6 @@ void updateServo(unsigned long now) {
       canvasServo.writeMicroseconds(pulseWidth);
       lastWrittenPulse = pulseWidth;
     }
-    
-    Serial.print("Servo step (1 minute) -> pulse: ");
-    Serial.println(pulseWidth);
   }
 }
 
@@ -112,16 +137,11 @@ void updateServo(unsigned long now) {
 
 void updateLED() {
   if (newRGBReceived) {
-    // Application directe et immédiate des nouvelles valeurs RGB
-    leds[0] = CRGB(rgbBuffer[0], rgbBuffer[1], rgbBuffer[2]);
     newRGBReceived = false;
     
+    // Application directe et immédiate des nouvelles valeurs RGB
+    leds[0] = CRGB(rgbBuffer[0], rgbBuffer[1], rgbBuffer[2]);
     FastLED.show();
-    
-    Serial.print("LED updated: ");
-    Serial.print(rgbBuffer[0]); Serial.print(",");
-    Serial.print(rgbBuffer[1]); Serial.print(",");
-    Serial.println(rgbBuffer[2]);
   }
 }
 
