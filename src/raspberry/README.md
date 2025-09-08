@@ -32,12 +32,15 @@ cd /path/to/project
 From your development machine, use the `deploy.sh` script to:
 - Transfer files to the Raspberry Pi
 - Install Python dependencies
+- Optionally upload Arduino code
 - Configure and restart services
 
 ```bash
-# On your development machine
-cd /path/to/project
+# Deploy Python code only (default)
 ./tools/deployment/deploy.sh
+
+# Deploy with Arduino code upload
+./tools/deployment/deploy.sh --with-arduino
 ```
 
 ## Hardware Configuration
@@ -61,32 +64,93 @@ The following systemd services are automatically installed and configured:
 - `music_engine.service`: Sound generation
 - `led_controller.service`: LED strip control
 - `puredata.service`: Audio processing
+- `arduino_serial.service`: Communication with Arduino controller
+
+## Arduino Integration
+
+The Arduino component provides mechanical control and visual feedback:
+
+### Hardware
+- **Arduino Uno** connected via USB serial
+- **Servo motor**: 180° 25kg servo (Pin 9)
+- **WS2812 LED**: Single pixel indicator (Pin 6)
+- **Power**: External 5V supply for servo and LED
+
+### Features
+- **Automatic canvas rotation**: Every 30 seconds with 10µs PWM steps
+- **Welcome sequence**: 5-second rainbow LED animation on startup  
+- **Color display**: Shows colors detected by vision system
+- **Serial communication**: Receives RGB commands at 9600 baud
+
+### Deployment
+Arduino code is automatically compiled and uploaded when using:
+```bash
+./tools/deployment/deploy.sh --with-arduino
+```
+
+### Monitoring
+```bash
+# Check Arduino service status
+sudo systemctl status arduino_serial.service
+
+# View Arduino communication logs
+sudo journalctl -u arduino_serial.service -n 50
+
+# Check connected Arduino
+ls -l /dev/tty*
+```
 
 ## Arduino Integration
 
 ### Setup
-Arduino integration requires Arduino CLI on the Raspberry Pi:
+Arduino integration requires Arduino CLI on the Raspberry Pi. The deployment script automatically installs it, but you can also install manually:
 ```bash
 # Check if Arduino CLI is installed
 arduino-cli version
 
-# If not installed, install it
+# Manual installation if needed
 curl -fsSL https://raw.githubusercontent.com/arduino/arduino-cli/master/install.sh | sh
+sudo mv bin/arduino-cli /usr/local/bin/
+arduino-cli config init
+arduino-cli core update-index
+arduino-cli core install arduino:avr
+arduino-cli lib install FastLED Servo
 ```
 
 ### Uploading Code
-To upload code to an Arduino connected to the Raspberry Pi:
+The deployment script handles Arduino upload automatically:
 ```bash
-# Compile and upload Arduino sketch
-arduino-cli compile --fqbn arduino:avr:uno /path/to/sketch
-arduino-cli upload -p /dev/ttyACM0 --fqbn arduino:avr:uno /path/to/sketch
+# Automatic upload with deployment
+./tools/deployment/deploy.sh --with-arduino
+```
+
+Manual upload process:
+```bash
+# Create temporary sketch directory
+mkdir -p /tmp/arduino_sketch
+cp /home/blanchard/tourne_disque/src/arduino/platformio/src/main.ino /tmp/arduino_sketch/arduino_sketch.ino
+cd /tmp/arduino_sketch
+
+# Compile and upload
+arduino-cli compile --fqbn arduino:avr:uno .
+arduino-cli upload -p /dev/ttyUSB0 --fqbn arduino:avr:uno .
 ```
 
 ### Serial Communication
-Monitor serial output from Arduino:
+The `arduino_serial.service` handles communication between Raspberry Pi and Arduino:
 ```bash
-arduino-cli monitor -p /dev/ttyACM0
+# Monitor serial communication
+sudo journalctl -u arduino_serial.service -f
+
+# Check Arduino connection
+ls -l /dev/tty*
 ```
+
+### Arduino Features
+- **Canvas rotation**: Automatic servo movement every 30 seconds
+- **Welcome sequence**: 5-second rainbow LED animation on boot
+- **Color feedback**: Displays colors detected by vision system
+- **RGB commands**: Supports multiple color format inputs
 
 ### Troubleshooting
 - Check Arduino connection: `ls -l /dev/tty*`
